@@ -27,7 +27,7 @@ inline void printMedicine(const Medicine& m) {
          << " | Name: " << setw(14) << left << m.name 
          << " | Cat: " << setw(10) << m.category 
          << " | Qty: " << setw(4) << right << m.quantity 
-         << " | Price: $" << setw(5) << fixed << setprecision(2) << m.price 
+         << " | Price: Rs " << setw(5) << fixed << setprecision(2) << m.price 
          << " | Expiry: " << m.expiry << " |\n";
 }
 

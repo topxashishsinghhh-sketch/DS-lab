@@ -343,7 +343,7 @@
             <th>Name</th>
             <th>Category</th>
             <th style="width: 80px;">Units</th>
-            <th style="width: 90px;">Price</th>
+            <th style="width: 90px;">Price (₹)</th>
             <th style="width: 100px;">Expiry</th>
             <th style="width: 80px;">Status</th>
             <th style="width: 70px;">Action</th>
@@ -458,7 +458,7 @@
             <td>${m.name}</td>
             <td>${m.category}</td>
             <td>${m.qty}</td>
-            <td>$${m.price.toFixed(2)}</td>
+            <td>₹${m.price.toFixed(2)}</td>
             <td>${m.expiry}</td>
             <td><span class="badge ${isLow ? 'badge-low' : 'badge-ok'}">${isLow ? 'Low' : 'Adequate'}</span></td>
             <td><button class="btn btn-danger btn-sm" onclick="deleteMed(${m.id})">Delete</button></td>

@@ -69,7 +69,7 @@ void handleAddMedicine() {
     cin >> m.category;
     cout << "Enter Quantity: ";
     cin >> m.quantity;
-    cout << "Enter Unit Price: ";
+    cout << "Enter Unit Price (Rs): ";
     cin >> m.price;
     cout << "Enter Expiry Date (YYYY-MM, e.g. 2027-08): ";
     cin >> m.expiry;
