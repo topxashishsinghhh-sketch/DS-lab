@@ -1,24 +1,19 @@
-// ============================================================================
-// common/StockRequest.h
-// ============================================================================
-// CONCEPT: Queue Item Record
-// This structure holds a pending restocking request made by dispensary staff.
-// It is processed strictly via FIFO (First-In, First-Out) using our Circular
-// Queue (StockQueue).
-// ============================================================================
-
 #ifndef STOCKREQUEST_H
 #define STOCKREQUEST_H
 
 #include <string>
 using namespace std;
 
+// ============================================================================
+// STOCK REQUEST STRUCTURE
+// Used by the Queue to process supplier restocking orders in FIFO order.
+// Easy to explain: "A token/ticket waiting in line to be served."
+// ============================================================================
 struct StockRequest {
-    string requestID;          // e.g., "REQ001", "REQ002"
-    string medicineID;         // Target medicine ID, e.g., "MED101"
-    int    requestedQuantity;  // Number of units to add to stock
-    string requestDate;        // Request placement date (YYYY-MM-DD)
-    string status;             // "Pending" or "Completed"
+    int requestId;       // Order ticket number (e.g. 1, 2, 3)
+    int medicineId;      // Which medicine to restock
+    string medicineName; // Name of medicine
+    int quantity;        // How many units to order
 };
 
-#endif // STOCKREQUEST_H
+#endif

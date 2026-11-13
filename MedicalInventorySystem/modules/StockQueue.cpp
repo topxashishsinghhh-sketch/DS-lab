@@ -1,150 +1,66 @@
-// ============================================================================
-// modules/StockQueue.cpp
-// ============================================================================
-// Implementation of the Circular Array Queue
-// ============================================================================
-
 #include "StockQueue.h"
-#include <iostream>
 #include <iomanip>
-#include <cstdio>
 
-using namespace std;
-
-// Constructor: Initializes empty circular queue
 StockQueue::StockQueue() {
-    frontIndex = 0;
-    rearIndex  = -1;
-    count      = 0;
-    nextNumber = 1;
+    front = 0;
+    rear = -1;
+    count = 0;
+    nextId = 1;
 }
 
-bool StockQueue::isEmpty() const {
-    return count == 0;
-}
-
-bool StockQueue::isFull() const {
-    return count == MAX_REQUESTS;
-}
-
-int StockQueue::size() const {
-    return count;
-}
-
-// ENQUEUE: Inserts a new request at the REAR of the circular queue
-// Time Complexity: O(1)
-bool StockQueue::enqueue(const StockRequest& r) {
+// ENQUEUE (Add to rear):
+// Step 1: Check for queue overflow (isFull)
+// Step 2: Advance rear with wrap-around: rear = (rear + 1) % MAX
+// Step 3: Put item in items[rear] and increment count
+bool StockQueue::enqueue(int medId, const string& medName, int qty) {
     if (isFull()) {
-        return false; // Queue Overflow
-    }
-
-    // Wrap around using modulo arithmetic
-    rearIndex = (rearIndex + 1) % MAX_REQUESTS;
-    items[rearIndex] = r;
-    count++;
-    return true;
-}
-
-// DEQUEUE: Removes the request at the FRONT of the circular queue
-// Time Complexity: O(1)
-bool StockQueue::dequeue(StockRequest& out) {
-    if (isEmpty()) {
-        return false; // Queue Underflow
-    }
-
-    out = items[frontIndex];
-    // Advance front index with modulo wrap-around
-    frontIndex = (frontIndex + 1) % MAX_REQUESTS;
-    count--;
-    return true;
-}
-
-// PEEK / FRONT: Inspects the front request without removing it
-// Time Complexity: O(1)
-bool StockQueue::front(StockRequest& out) const {
-    if (isEmpty()) {
+        cout << "  [!] Queue is full (Overflow)! Cannot add request.\n";
         return false;
     }
-    out = items[frontIndex];
+
+    rear = (rear + 1) % MAX_QUEUE; // Wrap around to slot 0 if needed
+    items[rear].requestId = nextId++;
+    items[rear].medicineId = medId;
+    items[rear].medicineName = medName;
+    items[rear].quantity = qty;
+    count++;
+
     return true;
 }
 
-// Displays all pending requests in queue order (oldest to newest)
+// DEQUEUE (Remove from front - FIFO):
+// Step 1: Check for queue underflow (isEmpty)
+// Step 2: Grab item at items[front]
+// Step 3: Advance front with wrap-around: front = (front + 1) % MAX, decrement count
+bool StockQueue::dequeue(StockRequest& result) {
+    if (isEmpty()) {
+        cout << "  [!] Queue is empty (Underflow)! No requests waiting.\n";
+        return false;
+    }
+
+    result = items[front];
+    front = (front + 1) % MAX_QUEUE; // Wrap around to slot 0 if needed
+    count--;
+
+    return true;
+}
+
+// DISPLAY ALL REQUESTS (In arrival order):
 void StockQueue::display() const {
     if (isEmpty()) {
-        cout << "  [!] No pending stock requests in the queue.\n";
+        cout << "  (No pending requests in queue)\n";
         return;
     }
 
-    cout << "  +-------------+---------+----------+------------+------------+--------------------+\n";
-    cout << "  | Pos in Queue| Req ID  | Med ID   | Req Qty    | Req Date   | Status             |\n";
-    cout << "  +-------------+---------+----------+------------+------------+--------------------+\n";
-
+    cout << "  === PENDING RESTOCK REQUESTS (CIRCULAR QUEUE FIFO) ===\n";
     for (int i = 0; i < count; i++) {
-        StockRequest r = getAt(i);
-        cout << "  | " << left << setw(12) << (to_string(i + 1) + (i == 0 ? " (NEXT)" : ""))
-             << "| " << left << setw(8)  << r.requestID
-             << "| " << left << setw(9)  << r.medicineID
-             << "| " << right << setw(7) << r.requestedQuantity << "  "
-             << "| " << left << setw(11) << r.requestDate
-             << "| " << left << setw(19) << r.status << "|\n";
+        int index = (front + i) % MAX_QUEUE;
+        cout << "  " << (i + 1) << ". Ticket #" << items[index].requestId 
+             << " | Med ID: " << items[index].medicineId 
+             << " (" << items[index].medicineName << ")"
+             << " | Qty to Restock: " << items[index].quantity;
+        if (i == 0) cout << "  <-- [FRONT / SERVED NEXT]";
+        cout << "\n";
     }
-
-    cout << "  +-------------+---------+----------+------------+------------+--------------------+\n";
-    cout << "  (Capacity used: " << count << " / " << MAX_REQUESTS << " slots)\n";
-}
-
-// Visual diagram showing the circular array slots and front/rear pointers
-void StockQueue::displayVisualQueue() const {
-    cout << "\n  [ CIRCULAR ARRAY QUEUE BUFFER VISUALIZATION ]\n";
-    cout << "  Slot Indices: ";
-    for (int i = 0; i < MAX_REQUESTS; i++) {
-        cout << "[" << setw(2) << i << "] ";
-    }
-    cout << "\n  Slot State  : ";
-
-    for (int i = 0; i < MAX_REQUESTS; i++) {
-        bool occupied = false;
-        // Check if index 'i' falls within the active window from front to rear
-        for (int k = 0; k < count; k++) {
-            if ((frontIndex + k) % MAX_REQUESTS == i) {
-                occupied = true;
-                break;
-            }
-        }
-        if (occupied) {
-            if (i == frontIndex && i == rearIndex) cout << "[F/R] ";
-            else if (i == frontIndex)             cout << "[ F ] ";
-            else if (i == rearIndex)              cout << "[ R ] ";
-            else                                  cout << "[REQ] ";
-        } else {
-            cout << "[ . ] ";
-        }
-    }
-    cout << "\n";
-    cout << "  Pointers: Front = " << frontIndex << ", Rear = " << rearIndex
-         << " | Count = " << count << " / " << MAX_REQUESTS << "\n";
-    cout << "  Wrap-around formula: next_slot = (current_slot + 1) % " << MAX_REQUESTS << "\n";
-}
-
-// Generates padded IDs like "REQ001", "REQ002", etc.
-string StockQueue::makeRequestId() {
-    char buffer[16];
-    snprintf(buffer, sizeof(buffer), "REQ%03d", nextNumber);
-    nextNumber++;
-    return string(buffer);
-}
-
-int StockQueue::getNextNumber() const {
-    return nextNumber;
-}
-
-void StockQueue::setNextNumber(int n) {
-    nextNumber = n;
-}
-
-// Retrieves item at relative position (0 = front/oldest)
-StockRequest StockQueue::getAt(int position) const {
-    int index = (frontIndex + position) % MAX_REQUESTS;
-    return items[index];
+    cout << "  Total waiting in line: " << count << " / " << MAX_QUEUE << " slots\n";
 }

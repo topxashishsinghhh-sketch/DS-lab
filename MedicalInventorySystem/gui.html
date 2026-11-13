@@ -86,11 +86,11 @@
     <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
       <div class="card">
         <div style="color: var(--text-muted); font-size: 12px;">Total Medicines (Linked List)</div>
-        <div id="metric-total" style="font-size: 28px; font-weight: bold; color: var(--primary); margin-top: 4px;">6</div>
+        <div id="metric-total" style="font-size: 28px; font-weight: bold; color: var(--primary); margin-top: 4px;">5</div>
       </div>
       <div class="card">
-        <div style="color: var(--text-muted); font-size: 12px;">Hash Table Buckets (Size = 11)</div>
-        <div style="font-size: 28px; font-weight: bold; color: var(--purple); margin-top: 4px;">11 <span style="font-size: 14px; color: #94a3b8;">(1 Collision)</span></div>
+        <div style="color: var(--text-muted); font-size: 12px;">Hash Table Buckets (Size = 10)</div>
+        <div style="font-size: 28px; font-weight: bold; color: var(--purple); margin-top: 4px;">10 <span style="font-size: 14px; color: #94a3b8;">(Collision at [1])</span></div>
       </div>
       <div class="card">
         <div style="color: var(--text-muted); font-size: 12px;">Pending Stock Orders (Queue)</div>
@@ -115,9 +115,7 @@
             <th>Category</th>
             <th>Stock</th>
             <th>Price</th>
-            <th>Mfg Date</th>
             <th>Expiry Date</th>
-            <th>Min Level</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -139,23 +137,21 @@
         <!-- Rendered by JS -->
       </div>
       <div class="code-box">
-// Core Node & Append Implementation in C++ (modules/InventoryList.cpp)
+// Super Simple Singly Linked List (modules/InventoryList.cpp)
 struct Node {
-    Medicine data;   // Record payload
-    Node* next;      // Heap pointer to next element
+    Medicine data;   // Real Medicine details
+    Node* next;      // Pointer to the next node in heap memory
 };
 
 void InventoryList::addMedicine(const Medicine& m) {
-    Node* newNode = new Node;
-    newNode->data = m;
-    newNode->next = nullptr;
+    Node* newNode = new Node{m, nullptr};
     if (head == nullptr) {
         head = newNode;
-    } else {
-        Node* current = head;
-        while (current->next != nullptr) current = current->next;
-        current->next = newNode;
+        return;
     }
+    Node* temp = head;
+    while (temp->next != nullptr) temp = temp->next;
+    temp->next = newNode;
 }
       </div>
     </div>
@@ -164,13 +160,13 @@ void InventoryList::addMedicine(const Medicine& m) {
   <!-- TAB: HASH TABLE -->
   <div id="tab-hashtable" class="tab-content" style="display: none;">
     <div class="card">
-      <div class="card-title">Hash Table with Chaining (Size = 11)</div>
+      <div class="card-title">Hash Table with Chaining (Size = 10, Formula: ID % 10)</div>
       <p style="font-size: 13px; color: var(--text-muted);">
         Lookup by Medicine ID is <strong>O(1)</strong> average. Collisions are handled using Separate Chaining.
       </p>
       <div style="margin: 16px 0; display: flex; gap: 10px;">
-        <input type="text" id="hash-calc-input" placeholder="Type Medicine ID (e.g. MED101)" value="MED101" style="max-width: 280px; margin: 0;">
-        <button class="btn" onclick="calculateHashStep()">Calculate Hash</button>
+        <input type="number" id="hash-calc-input" placeholder="Enter Numeric ID (e.g. 101, 111)" value="101" style="max-width: 280px; margin: 0;">
+        <button class="btn" onclick="calculateHashStep()">Calculate Bucket</button>
       </div>
       <div id="hash-calc-output" style="font-family: monospace; font-size: 13px; background: #000; padding: 12px; border-radius: 6px; color: #a5f3fc; margin-bottom: 16px;"></div>
 
@@ -185,7 +181,7 @@ void InventoryList::addMedicine(const Medicine& m) {
     <div class="card">
       <div class="card-title">Binary Search Tree (Expiry Date Index)</div>
       <p style="font-size: 13px; color: var(--text-muted);">
-        Indexed by Expiry Date (YYYY-MM-DD). In-order traversal visits dates in chronological order!
+        Indexed by Expiry Date (YYYY-MM). In-order traversal (Left -> Root -> Right) visits dates in chronological order!
       </p>
       <div id="bst-visual" style="margin-top: 16px;">
         <!-- Rendered by JS -->
@@ -196,9 +192,9 @@ void InventoryList::addMedicine(const Medicine& m) {
   <!-- TAB: CIRCULAR QUEUE -->
   <div id="tab-queue" class="tab-content" style="display: none;">
     <div class="card">
-      <div class="card-title">Circular Array Queue (Capacity = 15)</div>
+      <div class="card-title">Circular Array Queue (Capacity = 10)</div>
       <p style="font-size: 13px; color: var(--text-muted);">
-        Handles restock orders via FIFO. Modulo wrap-around <code>(rear + 1) % MAX_REQUESTS</code> reuses freed slots.
+        Handles restock orders via FIFO. Modulo wrap-around <code>(rear + 1) % 10</code> reuses freed slots.
       </p>
       <div style="display: flex; gap: 10px; margin: 16px 0;">
         <button class="btn btn-success" onclick="processQueueOrder()">Process Next Order (Dequeue FIFO)</button>
@@ -228,9 +224,9 @@ void InventoryList::addMedicine(const Medicine& m) {
       <div class="qa-box">
         <div class="qa-title">Q2. What is the Hash Function and how are collisions handled?</div>
         <div class="qa-ans">
-          The hash function sums the ASCII integer values of all characters in the Medicine ID string, then takes modulo 11:
-          <br><code>int index = sum(id[i]) % 11;</code>
-          <br>Collisions are resolved via <strong>Separate Chaining</strong>: each bucket is the head of a linked list. For instance, <strong>MED101</strong> and <strong>MED110</strong> both hash to Bucket 8 and form a linked list chain.
+          The hash function takes the integer Medicine ID modulo 10:
+          <br><code>int index = id % 10;</code>
+          <br>Collisions are resolved via <strong>Separate Chaining</strong>: each bucket is the head of a linked list. For instance, IDs <strong>101</strong> and <strong>111</strong> both yield Bucket 1 and form a linked list chain: <code>[111] -> [101] -> NULL</code>.
         </div>
       </div>
 
@@ -238,37 +234,33 @@ void InventoryList::addMedicine(const Medicine& m) {
         <div class="qa-title">Q3. Why is the Queue implemented as Circular rather than a normal array?</div>
         <div class="qa-ans">
           In a standard linear array queue, dequeuing leaves dead empty slots at the front. Moving elements to index 0 requires O(n) shifts. A circular queue wraps around using modulo arithmetic:
-          <br><code>rear = (rear + 1) % MAX_REQUESTS;</code>
+          <br><code>rear = (rear + 1) % 10;</code>
           <br>This guarantees both Enqueue and Dequeue remain strictly <strong>O(1)</strong>!
         </div>
       </div>
 
       <div class="qa-box">
-        <div class="qa-title">Q4. How do you prevent memory leaks when deleting a medicine?</div>
+        <div class="qa-title">Q4. How does the BST sort medicines?</div>
         <div class="qa-ans">
-          We synchronize deletion across all three index structures:
-          <br>1. Unlink from BST and remove the date node if empty.
-          <br>2. Unlink the HashNode from its bucket chain and <code>delete</code> it.
-          <br>3. Unlink the Node from the master Linked List and <code>delete current</code> to deallocate heap memory.
+          The BST organizes nodes where Left Child &lt; Parent &lt; Right Child based on expiry date string.
+          <br>When we perform an <strong>In-Order Traversal</strong> (Left -> Root -> Right), it recursively prints the medicines in strictly chronological order from earliest to latest!
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // In-memory data mirrors storage/medicines.txt & storage/requests.txt
     let medicines = [
-      { id: "MED101", name: "Paracetamol", category: "Tablet", mfg: "ABC Pharma", qty: 150, price: 2.50, mfgDate: "2026-01-10", expiry: "2027-01-10", min: 20 },
-      { id: "MED102", name: "Amoxicillin", category: "Capsule", mfg: "HealthCare Ltd", qty: 15, price: 8.75, mfgDate: "2025-12-01", expiry: "2026-10-01", min: 25 },
-      { id: "MED103", name: "Cough Syrup", category: "Syrup", mfg: "MediLife", qty: 60, price: 45.00, mfgDate: "2026-05-20", expiry: "2026-11-30", min: 10 },
-      { id: "MED110", name: "Ibuprofen", category: "Tablet", mfg: "ABC Pharma", qty: 200, price: 3.20, mfgDate: "2026-02-15", expiry: "2026-12-10", min: 30 },
-      { id: "MED104", name: "Vitamin C", category: "Tablet", mfg: "NutriWell", qty: 8, price: 1.50, mfgDate: "2026-03-01", expiry: "2028-03-15", min: 20 },
-      { id: "MED105", name: "Antacid Gel", category: "Syrup", mfg: "MediLife", qty: 90, price: 30.00, mfgDate: "2026-06-05", expiry: "2026-12-10", min: 15 }
+      { id: 101, name: "Paracetamol", category: "Tablet", qty: 150, price: 2.50, expiry: "2027-01", min: 20 },
+      { id: 102, name: "Amoxicillin", category: "Capsule", qty: 15, price: 8.75, expiry: "2026-10", min: 25 },
+      { id: 103, name: "Cough Syrup", category: "Syrup", qty: 60, price: 4.50, expiry: "2026-11", min: 10 },
+      { id: 111, name: "Ibuprofen", category: "Tablet", qty: 200, price: 3.20, expiry: "2026-12", min: 30 },
+      { id: 104, name: "Vitamin C", category: "Tablet", qty: 8, price: 1.50, expiry: "2028-03", min: 20 }
     ];
 
     let requests = [
-      { id: "REQ001", medId: "MED102", qty: 100, date: "2026-11-10", status: "Pending" },
-      { id: "REQ002", medId: "MED104", qty: 50, date: "2026-11-11", status: "Pending" }
+      { id: 1, medId: 102, name: "Amoxicillin", qty: 50 },
+      { id: 2, medId: 104, name: "Vitamin C", qty: 100 }
     ];
 
     function switchTab(tabId) {
@@ -297,11 +289,9 @@ void InventoryList::addMedicine(const Medicine& m) {
               ${m.qty} ${isLow ? '⚠️' : ''}
             </td>
             <td>$${m.price.toFixed(2)}</td>
-            <td>${m.mfgDate}</td>
             <td>${m.expiry}</td>
-            <td>${m.min}</td>
             <td>
-              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteMed('${m.id}')">Delete</button>
+              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteMed(${m.id})">Delete</button>
             </td>
           </tr>
         `;
@@ -316,40 +306,38 @@ void InventoryList::addMedicine(const Medicine& m) {
       medicines.forEach(m => {
         container.innerHTML += `
           <div class="node">
-            <div class="id">${m.id}</div>
+            <div class="id">ID: ${m.id}</div>
             <div class="sub">${m.name}</div>
             <div class="sub">${m.qty} units</div>
           </div>
           <span class="arrow">-></span>
         `;
       });
-      container.innerHTML += '<div class="node" style="background: #334155; border-color: #64748b;">NULL / nullptr</div>';
+      container.innerHTML += '<div class="node" style="background: #334155; border-color: #64748b;">NULL</div>';
     }
 
     function hashFunction(id) {
-      let sum = 0;
-      for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i);
-      return sum % 11;
+      return parseInt(id) % 10;
     }
 
     function renderHashTable() {
       const container = document.getElementById('hash-table-visual');
-      const buckets = Array.from({ length: 11 }, () => []);
+      const buckets = Array.from({ length: 10 }, () => []);
 
       medicines.forEach(m => {
         const b = hashFunction(m.id);
         buckets[b].push(m);
       });
 
-      let html = '<table><thead><tr><th style="width: 80px;">Bucket</th><th>Collision Chain</th></tr></thead><tbody>';
-      for (let i = 0; i < 11; i++) {
+      let html = '<table><thead><tr><th style="width: 100px;">Bucket</th><th>Collision Chain</th></tr></thead><tbody>';
+      for (let i = 0; i < 10; i++) {
         let chainHtml = '';
         if (buckets[i].length === 0) {
           chainHtml = '<span style="color: var(--text-muted);">(empty)</span>';
         } else {
           chainHtml = buckets[i].map(m => `
             <span style="background: #1e3a8a; border: 1px solid #3b82f6; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #38bdf8;">
-              ${m.id} : ${m.name}
+              ID ${m.id}: ${m.name}
             </span>
           `).join(' <span class="arrow">-></span> ') + ' <span class="arrow">-></span> NULL';
         }
@@ -361,30 +349,22 @@ void InventoryList::addMedicine(const Medicine& m) {
     }
 
     function calculateHashStep() {
-      const id = document.getElementById('hash-calc-input').value.trim() || 'MED101';
-      let sum = 0;
-      let breakdown = [];
-      for (let i = 0; i < id.length; i++) {
-        const code = id.charCodeAt(i);
-        sum += code;
-        breakdown.push(`'${id[i]}'(${code})`);
-      }
-      const bucket = sum % 11;
+      const id = parseInt(document.getElementById('hash-calc-input').value) || 101;
+      const bucket = id % 10;
       document.getElementById('hash-calc-output').innerHTML = `
-        ID: "${id}"<br>
-        ASCII Sum: ${breakdown.join(' + ')} = ${sum}<br>
-        Formula  : (${sum} % 11) = <strong>Bucket [${bucket}]</strong>
+        Medicine ID : ${id}<br>
+        Hash Formula: (${id} % 10) = <strong>Bucket [${bucket}]</strong><br>
+        Note: Try ID 101 and ID 111 — both yield Bucket 1, creating a collision!
       `;
     }
 
     function renderBST() {
       const container = document.getElementById('bst-visual');
-      // Sort by expiry
       const sorted = [...medicines].sort((a, b) => a.expiry.localeCompare(b.expiry));
       let html = '<p style="font-size: 13px; margin-bottom: 12px; color: var(--accent);">In-Order Traversal (Sorted Earliest to Latest):</p>';
       html += '<table><thead><tr><th>Expiry Date</th><th>Medicine ID</th><th>Name</th><th>Stock</th></tr></thead><tbody>';
       sorted.forEach(m => {
-        const isExp = m.expiry < '2026-11-13';
+        const isExp = m.expiry < '2026-11';
         html += `
           <tr style="${isExp ? 'background: rgba(239, 68, 68, 0.1);' : ''}">
             <td><strong style="color: ${isExp ? 'var(--danger)' : 'var(--primary)'};">${m.expiry} ${isExp ? '(EXPIRED)' : ''}</strong></td>
@@ -401,7 +381,7 @@ void InventoryList::addMedicine(const Medicine& m) {
     function renderQueue() {
       const container = document.getElementById('queue-visual');
       container.innerHTML = '';
-      const MAX = 15;
+      const MAX = 10;
       for (let i = 0; i < MAX; i++) {
         const req = requests[i];
         const isFront = i === 0 && requests.length > 0;
@@ -414,7 +394,7 @@ void InventoryList::addMedicine(const Medicine& m) {
             ${isRear ? '<span class="slot-tag tag-rear">REAR</span>' : ''}
             <span style="color: #64748b; font-size: 10px;">Slot ${i}</span>
             <div style="font-weight: bold; color: ${active ? 'var(--text)' : '#475569'}; margin-top: 4px;">
-              ${active ? req.id : 'EMPTY'}
+              ${active ? `Ticket #${req.id}` : 'EMPTY'}
             </div>
             ${active ? `<div style="font-size: 10px; color: var(--accent);">${req.qty} units</div>` : ''}
           </div>
@@ -430,37 +410,34 @@ void InventoryList::addMedicine(const Medicine& m) {
       const processed = requests.shift();
       const med = medicines.find(m => m.id === processed.medId);
       if (med) med.qty += processed.qty;
-      alert(`Dequeued & Restocked: Added ${processed.qty} units to ${processed.medId}`);
+      alert(`Dequeued & Restocked: Added ${processed.qty} units to ${med ? med.name : processed.medId}`);
       renderDashboard();
       renderQueue();
     }
 
     function deleteMed(id) {
-      if (!confirm(`Are you sure you want to delete ${id}?`)) return;
+      if (!confirm(`Are you sure you want to delete ID ${id}?`)) return;
       medicines = medicines.filter(m => m.id !== id);
       renderDashboard();
     }
 
     function openAddModal() {
-      const id = prompt("Enter Medicine ID (e.g. MED107):", "MED107");
+      const id = parseInt(prompt("Enter Medicine ID (e.g. 105):", "105"));
       if (!id) return;
-      const name = prompt("Enter Medicine Name:", "Cetirizine");
+      const name = prompt("Enter Medicine Name:", "Aspirin");
       if (!name) return;
       medicines.push({
-        id: id.toUpperCase(),
+        id: id,
         name: name,
         category: "Tablet",
-        mfg: "Generic Health",
         qty: 100,
-        price: 4.50,
-        mfgDate: "2026-01-01",
-        expiry: "2027-12-31",
+        price: 2.00,
+        expiry: "2027-09",
         min: 20
       });
       renderDashboard();
     }
 
-    // Initial render
     renderDashboard();
   </script>
 </body>
