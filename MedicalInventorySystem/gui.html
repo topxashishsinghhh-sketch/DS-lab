@@ -3,249 +3,421 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Medical Inventory Management System - Data Structures Lab</title>
+  <title>Medical Inventory Management System — DS-PBL</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --card-border: #334155;
-      --primary: #38bdf8;
-      --primary-hover: #0ea5e9;
-      --accent: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --purple: #a855f7;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
+      --bg: #0b0f19;
+      --surface: #111827;
+      --surface-border: #1f2937;
+      --surface-hover: #1e293b;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent: #059669;
+      --accent-bg: rgba(5, 150, 105, 0.1);
+      --danger: #dc2626;
+      --danger-bg: rgba(220, 38, 38, 0.1);
+      --warning: #d97706;
+      --border: #374151;
+      --font-mono: 'Consolas', 'Courier New', monospace;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding: 24px; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--card-border); }
-    h1 { font-size: 24px; color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 10px; }
-    .badge { background: #0284c7; color: white; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; overflow-x: auto; }
-    .tab-btn { background: transparent; border: none; color: var(--text-muted); padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 14px; }
-    .tab-btn:hover { background: var(--card-bg); color: var(--text); }
-    .tab-btn.active { background: var(--primary); color: #0f172a; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
-    .card-title { font-size: 16px; font-weight: 600; color: var(--primary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
-    th { text-align: left; background: #0f172a; color: var(--primary); padding: 10px 12px; font-weight: 600; border-bottom: 2px solid var(--card-border); }
-    td { padding: 10px 12px; border-bottom: 1px solid var(--card-border); color: #cbd5e1; }
-    tr:hover td { background: rgba(56, 189, 248, 0.05); }
-    .btn { background: var(--primary); color: #0f172a; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; transition: 0.2s; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 16px 20px;
+    }
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--surface-border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+    .brand-tag {
+      font-size: 11px;
+      background: var(--surface-border);
+      color: var(--text-muted);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--accent);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background-color: var(--accent);
+      border-radius: 50%;
+    }
+    /* Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--surface-border);
+      margin-bottom: 16px;
+    }
+    .nav-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 4px 4px 0 0;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .nav-tab:hover {
+      color: var(--text);
+      background: var(--surface);
+    }
+    .nav-tab.active {
+      color: #60a5fa;
+      border-bottom-color: #60a5fa;
+      background: var(--surface);
+    }
+    /* Metric Cards */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .metric-val {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 2px;
+    }
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    /* Panels */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      background: #0f172a;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--surface-border);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.4px;
+    }
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--surface-border);
+      color: #d1d5db;
+    }
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .badge-ok { background: var(--accent-bg); color: #34d399; }
+    .badge-low { background: var(--danger-bg); color: #f87171; }
+    /* Buttons */
+    .btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
     .btn:hover { background: var(--primary-hover); }
-    .btn-success { background: var(--accent); color: white; }
-    .btn-danger { background: var(--danger); color: white; }
-    .node-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding: 12px; background: #0f172a; border-radius: 8px; border: 1px dashed var(--card-border); }
-    .node { background: #1e3a8a; border: 1px solid #3b82f6; border-radius: 8px; padding: 8px 12px; font-size: 12px; text-align: center; }
-    .node .id { font-weight: bold; color: var(--primary); }
-    .node .sub { font-size: 11px; color: #94a3b8; }
-    .arrow { color: #38bdf8; font-weight: bold; font-size: 16px; }
-    .queue-grid { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0; }
-    .queue-slot { min-width: 75px; height: 75px; border: 2px solid var(--card-border); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; background: #0f172a; position: relative; }
-    .queue-slot.active { border-color: var(--accent); background: rgba(16, 185, 129, 0.1); }
-    .queue-slot.front { border-color: var(--primary); box-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
-    .queue-slot.rear { border-color: var(--purple); }
-    .slot-tag { position: absolute; top: -10px; font-size: 9px; padding: 1px 5px; border-radius: 4px; font-weight: bold; }
-    .tag-front { background: var(--primary); color: #0f172a; }
-    .tag-rear { background: var(--purple); color: white; }
-    .code-box { background: #000; border: 1px solid var(--card-border); border-radius: 8px; padding: 14px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; color: #a5f3fc; overflow-x: auto; line-height: 1.5; margin-top: 10px; }
-    .qa-box { background: rgba(30, 41, 59, 0.7); border-left: 4px solid var(--primary); padding: 12px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; }
-    .qa-title { font-weight: bold; color: var(--primary); margin-bottom: 4px; }
-    .qa-ans { color: #cbd5e1; }
-    input, select { background: #0f172a; border: 1px solid var(--card-border); color: white; padding: 8px 12px; border-radius: 6px; font-size: 13px; width: 100%; margin-top: 6px; margin-bottom: 12px; }
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
+    .btn-danger { background: #b91c1c; }
+    .btn-danger:hover { background: #991b1b; }
+    .btn-secondary { background: #374151; color: var(--text); }
+    .btn-secondary:hover { background: #4b5563; }
+    /* Visual Diagram Layouts */
+    .chain-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 12px;
+      background: #0a0e17;
+      border: 1px solid var(--surface-border);
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .chain-node {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 11px;
+      text-align: center;
+      min-width: 90px;
+    }
+    .chain-node strong { color: #60a5fa; display: block; }
+    .chain-arrow { color: #64748b; font-weight: bold; font-size: 12px; }
+    /* Queue slots */
+    .queue-track {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 10px 0;
+    }
+    .queue-cell {
+      min-width: 65px;
+      height: 60px;
+      border: 1px solid var(--surface-border);
+      background: #0a0e17;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      position: relative;
+    }
+    .queue-cell.active {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.08);
+    }
+    .queue-cell.front {
+      border-color: #10b981;
+    }
+    .cell-pin {
+      position: absolute;
+      top: -8px;
+      font-size: 8px;
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-weight: bold;
+    }
+    .pin-front { background: #10b981; color: #000; }
+    .pin-rear { background: #8b5cf6; color: #fff; }
+    /* Inputs */
+    input[type="number"], input[type="text"] {
+      background: #0a0e17;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    input:focus {
+      outline: 1px solid #60a5fa;
+      border-color: #60a5fa;
+    }
+    .hash-test-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
 
+  <!-- Header -->
   <header>
-    <div>
-      <h1>🏥 Medical Inventory Management System <span class="badge">DS Lab Final</span></h1>
-      <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
-        Interactive Visualization of Linked List, Hash Table (Chaining), Expiry BST, & Circular Queue
-      </p>
+    <div class="brand">
+      <div class="brand-title">Medical Inventory Management System</div>
+      <div class="brand-tag">DS-PBL</div>
     </div>
-    <div>
-      <span style="font-size: 13px; color: var(--accent); font-weight: 600;">● System Online</span>
+    <div class="status-indicator">
+      <span class="status-dot"></span> System Operational
     </div>
   </header>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Live Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('linkedlist')">🔗 Singly Linked List</button>
-    <button class="tab-btn" onclick="switchTab('hashtable')">⚡ Hash Table (Chaining)</button>
-    <button class="tab-btn" onclick="switchTab('bst')">🌲 Expiry BST</button>
-    <button class="tab-btn" onclick="switchTab('queue')">🔄 Circular Queue</button>
-    <button class="tab-btn" onclick="switchTab('viva')">🎓 Teacher Viva Guide</button>
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('tab-overview')">Inventory Overview</button>
+    <button class="nav-tab" onclick="showTab('tab-linkedlist')">Singly Linked List</button>
+    <button class="nav-tab" onclick="showTab('tab-hashtable')">Hash Table (Chaining)</button>
+    <button class="nav-tab" onclick="showTab('tab-bst')">Expiry BST</button>
+    <button class="nav-tab" onclick="showTab('tab-queue')">Restock Queue (FIFO)</button>
   </div>
 
-  <!-- TAB: DASHBOARD -->
-  <div id="tab-dashboard" class="tab-content">
-    <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
-      <div class="card">
-        <div style="color: var(--text-muted); font-size: 12px;">Total Medicines (Linked List)</div>
-        <div id="metric-total" style="font-size: 28px; font-weight: bold; color: var(--primary); margin-top: 4px;">5</div>
-      </div>
-      <div class="card">
-        <div style="color: var(--text-muted); font-size: 12px;">Hash Table Buckets (Size = 10)</div>
-        <div style="font-size: 28px; font-weight: bold; color: var(--purple); margin-top: 4px;">10 <span style="font-size: 14px; color: #94a3b8;">(Collision at [1])</span></div>
-      </div>
-      <div class="card">
-        <div style="color: var(--text-muted); font-size: 12px;">Pending Stock Orders (Queue)</div>
-        <div id="metric-queue" style="font-size: 28px; font-weight: bold; color: var(--warning); margin-top: 4px;">2</div>
-      </div>
-      <div class="card">
-        <div style="color: var(--text-muted); font-size: 12px;">Expired Medicines (BST Audit)</div>
-        <div id="metric-expired" style="font-size: 28px; font-weight: bold; color: var(--danger); margin-top: 4px;">1</div>
-      </div>
+  <!-- Metrics Bar -->
+  <div class="metrics-bar">
+    <div class="metric-card">
+      <div class="metric-label">Total Medicines</div>
+      <div id="m-total" class="metric-val">5</div>
+      <div class="metric-sub">Singly Linked List storage</div>
     </div>
+    <div class="metric-card">
+      <div class="metric-label">Hash Table Buckets</div>
+      <div class="metric-val">10 <span style="font-size: 12px; color: #9ca3af; font-weight: normal;">(Size)</span></div>
+      <div class="metric-sub">Formula: ID % 10</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Pending Orders</div>
+      <div id="m-queue" class="metric-val">2</div>
+      <div class="metric-sub">Circular Queue buffer</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Expiring / Expired</div>
+      <div id="m-expired" class="metric-val">1</div>
+      <div class="metric-sub">Binary Search Tree audit</div>
+    </div>
+  </div>
 
-    <div class="card" style="margin-bottom: 20px;">
-      <div class="card-title">
-        <span>Current Medicine Inventory (Master Singly Linked List)</span>
-        <button class="btn" onclick="openAddModal()">+ Add Medicine</button>
+  <!-- TAB: INVENTORY OVERVIEW -->
+  <div id="tab-overview" class="tab-pane">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Medicine Catalog</div>
+        <button class="btn" onclick="addMedicinePrompt()">+ Add Record</button>
       </div>
       <table>
         <thead>
           <tr>
-            <th>ID</th>
+            <th style="width: 70px;">ID</th>
             <th>Name</th>
             <th>Category</th>
-            <th>Stock</th>
-            <th>Price</th>
-            <th>Expiry Date</th>
-            <th>Action</th>
+            <th style="width: 80px;">Units</th>
+            <th style="width: 90px;">Price</th>
+            <th style="width: 100px;">Expiry</th>
+            <th style="width: 80px;">Status</th>
+            <th style="width: 70px;">Action</th>
           </tr>
         </thead>
-        <tbody id="inventory-tbody">
-          <!-- Populated by JS -->
-        </tbody>
+        <tbody id="inventory-table"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- TAB: LINKED LIST -->
-  <div id="tab-linkedlist" class="tab-content" style="display: none;">
-    <div class="card">
-      <div class="card-title">Singly Linked List Memory Architecture</div>
-      <p style="font-size: 13px; color: var(--text-muted);">
-        The Linked List is the <strong>Sole Owner</strong> of the medicine records. Nodes are dynamically allocated on the heap via <code>new Node</code>.
+  <!-- TAB: SINGLY LINKED LIST -->
+  <div id="tab-linkedlist" class="tab-pane" style="display: none;">
+    <div class="panel">
+      <div class="panel-title">Singly Linked List (Heap Node Allocation)</div>
+      <p style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">
+        Master records are chained linearly via <code>Node* next</code> pointers.
       </p>
-      <div id="ll-visual" class="node-chain">
-        <!-- Rendered by JS -->
-      </div>
-      <div class="code-box">
-// Super Simple Singly Linked List (modules/InventoryList.cpp)
-struct Node {
-    Medicine data;   // Real Medicine details
-    Node* next;      // Pointer to the next node in heap memory
-};
-
-void InventoryList::addMedicine(const Medicine& m) {
-    Node* newNode = new Node{m, nullptr};
-    if (head == nullptr) {
-        head = newNode;
-        return;
-    }
-    Node* temp = head;
-    while (temp->next != nullptr) temp = temp->next;
-    temp->next = newNode;
-}
-      </div>
+      <div id="ll-chain" class="chain-container"></div>
     </div>
   </div>
 
   <!-- TAB: HASH TABLE -->
-  <div id="tab-hashtable" class="tab-content" style="display: none;">
-    <div class="card">
-      <div class="card-title">Hash Table with Chaining (Size = 10, Formula: ID % 10)</div>
-      <p style="font-size: 13px; color: var(--text-muted);">
-        Lookup by Medicine ID is <strong>O(1)</strong> average. Collisions are handled using Separate Chaining.
-      </p>
-      <div style="margin: 16px 0; display: flex; gap: 10px;">
-        <input type="number" id="hash-calc-input" placeholder="Enter Numeric ID (e.g. 101, 111)" value="101" style="max-width: 280px; margin: 0;">
-        <button class="btn" onclick="calculateHashStep()">Calculate Bucket</button>
+  <div id="tab-hashtable" class="tab-pane" style="display: none;">
+    <div class="panel">
+      <div class="panel-title">Hash Table (Collision Chaining, Size 10)</div>
+      <div class="hash-test-box" style="margin-top: 10px;">
+        <span style="font-size: 12px; color: var(--text-muted);">Test ID:</span>
+        <input type="number" id="hash-input" value="101" style="width: 100px;" oninput="updateHashCalc()">
+        <span id="hash-result" style="font-family: var(--font-mono); font-size: 12px; color: #60a5fa;"></span>
       </div>
-      <div id="hash-calc-output" style="font-family: monospace; font-size: 13px; background: #000; padding: 12px; border-radius: 6px; color: #a5f3fc; margin-bottom: 16px;"></div>
-
-      <div id="hash-table-visual">
-        <!-- Rendered by JS -->
-      </div>
+      <table style="margin-top: 8px;">
+        <thead>
+          <tr>
+            <th style="width: 90px;">Bucket</th>
+            <th>Chained Nodes (Collision List)</th>
+          </tr>
+        </thead>
+        <tbody id="hash-table-body"></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- TAB: BST -->
-  <div id="tab-bst" class="tab-content" style="display: none;">
-    <div class="card">
-      <div class="card-title">Binary Search Tree (Expiry Date Index)</div>
-      <p style="font-size: 13px; color: var(--text-muted);">
-        Indexed by Expiry Date (YYYY-MM). In-order traversal (Left -> Root -> Right) visits dates in chronological order!
+  <!-- TAB: EXPIRY BST -->
+  <div id="tab-bst" class="tab-pane" style="display: none;">
+    <div class="panel">
+      <div class="panel-title">Binary Search Tree (Chronological In-Order Traversal)</div>
+      <p style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">
+        Sorted automatically by expiry date string: Left child &lt; Parent &le; Right child.
       </p>
-      <div id="bst-visual" style="margin-top: 16px;">
-        <!-- Rendered by JS -->
-      </div>
+      <table style="margin-top: 12px;">
+        <thead>
+          <tr>
+            <th style="width: 110px;">Expiry Date</th>
+            <th style="width: 80px;">ID</th>
+            <th>Medicine Name</th>
+            <th style="width: 80px;">Units</th>
+          </tr>
+        </thead>
+        <tbody id="bst-table-body"></tbody>
+      </table>
     </div>
   </div>
 
   <!-- TAB: CIRCULAR QUEUE -->
-  <div id="tab-queue" class="tab-content" style="display: none;">
-    <div class="card">
-      <div class="card-title">Circular Array Queue (Capacity = 10)</div>
-      <p style="font-size: 13px; color: var(--text-muted);">
-        Handles restock orders via FIFO. Modulo wrap-around <code>(rear + 1) % 10</code> reuses freed slots.
-      </p>
-      <div style="display: flex; gap: 10px; margin: 16px 0;">
-        <button class="btn btn-success" onclick="processQueueOrder()">Process Next Order (Dequeue FIFO)</button>
-      </div>
-      <div id="queue-visual" class="queue-grid">
-        <!-- Rendered by JS -->
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: VIVA GUIDE -->
-  <div id="tab-viva" class="tab-content" style="display: none;">
-    <div class="card">
-      <div class="card-title">Teacher Viva & Defense Question Bank</div>
-      
-      <div class="qa-box">
-        <div class="qa-title">Q1. Why are you using 4 different data structures instead of just one?</div>
-        <div class="qa-ans">
-          Each structure serves a distinct optimal role:
-          <br>1. <strong>Singly Linked List</strong>: Stores dynamic master records without array resizing.
-          <br>2. <strong>Hash Table</strong>: Provides O(1) instant search and updates by Medicine ID.
-          <br>3. <strong>Binary Search Tree</strong>: Provides O(log n) chronological sorting and expiry queries (in-order traversal).
-          <br>4. <strong>Circular Queue</strong>: Enforces fair First-In, First-Out (FIFO) processing for supplier restock orders without shifting array items.
+  <div id="tab-queue" class="tab-pane" style="display: none;">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Circular Array Queue (Capacity = 10)</div>
+          <div style="color: var(--text-muted); font-size: 11px;">Restock requests processed strictly FIFO via <code>(rear + 1) % 10</code>.</div>
         </div>
+        <button class="btn btn-secondary btn-sm" onclick="processNextOrder()">Process Next (Dequeue)</button>
       </div>
-
-      <div class="qa-box">
-        <div class="qa-title">Q2. What is the Hash Function and how are collisions handled?</div>
-        <div class="qa-ans">
-          The hash function takes the integer Medicine ID modulo 10:
-          <br><code>int index = id % 10;</code>
-          <br>Collisions are resolved via <strong>Separate Chaining</strong>: each bucket is the head of a linked list. For instance, IDs <strong>101</strong> and <strong>111</strong> both yield Bucket 1 and form a linked list chain: <code>[111] -> [101] -> NULL</code>.
-        </div>
-      </div>
-
-      <div class="qa-box">
-        <div class="qa-title">Q3. Why is the Queue implemented as Circular rather than a normal array?</div>
-        <div class="qa-ans">
-          In a standard linear array queue, dequeuing leaves dead empty slots at the front. Moving elements to index 0 requires O(n) shifts. A circular queue wraps around using modulo arithmetic:
-          <br><code>rear = (rear + 1) % 10;</code>
-          <br>This guarantees both Enqueue and Dequeue remain strictly <strong>O(1)</strong>!
-        </div>
-      </div>
-
-      <div class="qa-box">
-        <div class="qa-title">Q4. How does the BST sort medicines?</div>
-        <div class="qa-ans">
-          The BST organizes nodes where Left Child &lt; Parent &lt; Right Child based on expiry date string.
-          <br>When we perform an <strong>In-Order Traversal</strong> (Left -> Root -> Right), it recursively prints the medicines in strictly chronological order from earliest to latest!
-        </div>
-      </div>
+      <div id="queue-cells" class="queue-track"></div>
     </div>
   </div>
 
@@ -263,182 +435,169 @@ void InventoryList::addMedicine(const Medicine& m) {
       { id: 2, medId: 104, name: "Vitamin C", qty: 100 }
     ];
 
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.getElementById('tab-' + tabId).style.display = 'block';
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).style.display = 'block';
       event.target.classList.add('active');
 
-      if (tabId === 'linkedlist') renderLinkedList();
-      if (tabId === 'hashtable') renderHashTable();
-      if (tabId === 'bst') renderBST();
-      if (tabId === 'queue') renderQueue();
+      if (tabId === 'tab-linkedlist') renderLinkedList();
+      if (tabId === 'tab-hashtable') renderHashTable();
+      if (tabId === 'tab-bst') renderBST();
+      if (tabId === 'tab-queue') renderQueue();
     }
 
-    function renderDashboard() {
-      const tbody = document.getElementById('inventory-tbody');
+    function renderOverview() {
+      const tbody = document.getElementById('inventory-table');
       tbody.innerHTML = '';
       medicines.forEach(m => {
         const isLow = m.qty <= m.min;
         tbody.innerHTML += `
           <tr>
-            <td><strong>${m.id}</strong></td>
+            <td style="font-family: var(--font-mono); font-weight: 600;">${m.id}</td>
             <td>${m.name}</td>
             <td>${m.category}</td>
-            <td style="color: ${isLow ? 'var(--danger)' : 'var(--text)'}; font-weight: bold;">
-              ${m.qty} ${isLow ? '⚠️' : ''}
-            </td>
+            <td>${m.qty}</td>
             <td>$${m.price.toFixed(2)}</td>
             <td>${m.expiry}</td>
-            <td>
-              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteMed(${m.id})">Delete</button>
-            </td>
+            <td><span class="badge ${isLow ? 'badge-low' : 'badge-ok'}">${isLow ? 'Low' : 'Adequate'}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteMed(${m.id})">Delete</button></td>
           </tr>
         `;
       });
-      document.getElementById('metric-total').innerText = medicines.length;
-      document.getElementById('metric-queue').innerText = requests.length;
+      document.getElementById('m-total').innerText = medicines.length;
+      document.getElementById('m-queue').innerText = requests.length;
     }
 
     function renderLinkedList() {
-      const container = document.getElementById('ll-visual');
-      container.innerHTML = '<span style="color: var(--primary); font-weight: bold;">Head -> </span>';
+      const container = document.getElementById('ll-chain');
+      container.innerHTML = '<span style="font-weight: 600; color: #60a5fa; font-size: 11px;">head &rarr;</span>';
       medicines.forEach(m => {
         container.innerHTML += `
-          <div class="node">
-            <div class="id">ID: ${m.id}</div>
-            <div class="sub">${m.name}</div>
-            <div class="sub">${m.qty} units</div>
+          <div class="chain-node">
+            <strong>ID ${m.id}</strong>
+            <span style="color: var(--text-muted);">${m.name}</span>
           </div>
-          <span class="arrow">-></span>
+          <span class="chain-arrow">&rarr;</span>
         `;
       });
-      container.innerHTML += '<div class="node" style="background: #334155; border-color: #64748b;">NULL</div>';
-    }
-
-    function hashFunction(id) {
-      return parseInt(id) % 10;
+      container.innerHTML += '<div class="chain-node" style="color: var(--text-muted);">nullptr</div>';
     }
 
     function renderHashTable() {
-      const container = document.getElementById('hash-table-visual');
+      const tbody = document.getElementById('hash-table-body');
+      tbody.innerHTML = '';
       const buckets = Array.from({ length: 10 }, () => []);
 
       medicines.forEach(m => {
-        const b = hashFunction(m.id);
-        buckets[b].push(m);
+        buckets[m.id % 10].push(m);
       });
 
-      let html = '<table><thead><tr><th style="width: 100px;">Bucket</th><th>Collision Chain</th></tr></thead><tbody>';
       for (let i = 0; i < 10; i++) {
-        let chainHtml = '';
+        let chain = '';
         if (buckets[i].length === 0) {
-          chainHtml = '<span style="color: var(--text-muted);">(empty)</span>';
+          chain = '<span style="color: var(--text-muted); font-size: 11px;">(empty)</span>';
         } else {
-          chainHtml = buckets[i].map(m => `
-            <span style="background: #1e3a8a; border: 1px solid #3b82f6; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #38bdf8;">
-              ID ${m.id}: ${m.name}
+          chain = buckets[i].map(m => `
+            <span style="font-family: var(--font-mono); background: #1e293b; padding: 2px 6px; border-radius: 3px; border: 1px solid #334155; font-size: 11px;">
+              ${m.id}: ${m.name}
             </span>
-          `).join(' <span class="arrow">-></span> ') + ' <span class="arrow">-></span> NULL';
+          `).join(' <span style="color: #64748b;">&rarr;</span> ') + ' <span style="color: #64748b;">&rarr; null</span>';
         }
-        html += `<tr><td><strong>[Bucket ${i}]</strong></td><td>${chainHtml}</td></tr>`;
+        tbody.innerHTML += `
+          <tr>
+            <td style="font-family: var(--font-mono); color: #9ca3af;">Bucket [${i}]</td>
+            <td>${chain}</td>
+          </tr>
+        `;
       }
-      html += '</tbody></table>';
-      container.innerHTML = html;
-      calculateHashStep();
+      updateHashCalc();
     }
 
-    function calculateHashStep() {
-      const id = parseInt(document.getElementById('hash-calc-input').value) || 101;
-      const bucket = id % 10;
-      document.getElementById('hash-calc-output').innerHTML = `
-        Medicine ID : ${id}<br>
-        Hash Formula: (${id} % 10) = <strong>Bucket [${bucket}]</strong><br>
-        Note: Try ID 101 and ID 111 — both yield Bucket 1, creating a collision!
-      `;
+    function updateHashCalc() {
+      const id = parseInt(document.getElementById('hash-input').value) || 0;
+      const b = id % 10;
+      document.getElementById('hash-result').innerText = `-> ${id} % 10 = Bucket [${b}]`;
     }
 
     function renderBST() {
-      const container = document.getElementById('bst-visual');
+      const tbody = document.getElementById('bst-table-body');
+      tbody.innerHTML = '';
       const sorted = [...medicines].sort((a, b) => a.expiry.localeCompare(b.expiry));
-      let html = '<p style="font-size: 13px; margin-bottom: 12px; color: var(--accent);">In-Order Traversal (Sorted Earliest to Latest):</p>';
-      html += '<table><thead><tr><th>Expiry Date</th><th>Medicine ID</th><th>Name</th><th>Stock</th></tr></thead><tbody>';
       sorted.forEach(m => {
         const isExp = m.expiry < '2026-11';
-        html += `
-          <tr style="${isExp ? 'background: rgba(239, 68, 68, 0.1);' : ''}">
-            <td><strong style="color: ${isExp ? 'var(--danger)' : 'var(--primary)'};">${m.expiry} ${isExp ? '(EXPIRED)' : ''}</strong></td>
+        tbody.innerHTML += `
+          <tr>
+            <td style="font-family: var(--font-mono); font-weight: 600; color: ${isExp ? '#f87171' : 'var(--text)'};">
+              ${m.expiry} ${isExp ? '(Expired)' : ''}
+            </td>
             <td>${m.id}</td>
             <td>${m.name}</td>
             <td>${m.qty}</td>
           </tr>
         `;
       });
-      html += '</tbody></table>';
-      container.innerHTML = html;
     }
 
     function renderQueue() {
-      const container = document.getElementById('queue-visual');
+      const container = document.getElementById('queue-cells');
       container.innerHTML = '';
       const MAX = 10;
       for (let i = 0; i < MAX; i++) {
         const req = requests[i];
-        const isFront = i === 0 && requests.length > 0;
-        const isRear = i === requests.length - 1 && requests.length > 0;
         const active = i < requests.length;
+        const isFront = i === 0 && active;
+        const isRear = i === requests.length - 1 && active;
 
         container.innerHTML += `
-          <div class="queue-slot ${active ? 'active' : ''} ${isFront ? 'front' : ''} ${isRear ? 'rear' : ''}">
-            ${isFront ? '<span class="slot-tag tag-front">FRONT</span>' : ''}
-            ${isRear ? '<span class="slot-tag tag-rear">REAR</span>' : ''}
-            <span style="color: #64748b; font-size: 10px;">Slot ${i}</span>
-            <div style="font-weight: bold; color: ${active ? 'var(--text)' : '#475569'}; margin-top: 4px;">
-              ${active ? `Ticket #${req.id}` : 'EMPTY'}
+          <div class="queue-cell ${active ? 'active' : ''} ${isFront ? 'front' : ''}">
+            ${isFront ? '<span class="cell-pin pin-front">FRONT</span>' : ''}
+            ${isRear ? '<span class="cell-pin pin-rear">REAR</span>' : ''}
+            <span style="color: #6b7280; font-size: 9px;">Slot ${i}</span>
+            <div style="font-weight: 600; color: ${active ? '#f3f4f6' : '#374151'}; margin-top: 2px;">
+              ${active ? '#' + req.id : '-'}
             </div>
-            ${active ? `<div style="font-size: 10px; color: var(--accent);">${req.qty} units</div>` : ''}
           </div>
         `;
       }
     }
 
-    function processQueueOrder() {
+    function processNextOrder() {
       if (requests.length === 0) {
-        alert("Queue Underflow: No requests waiting!");
+        alert("Queue Underflow: No requests in line.");
         return;
       }
-      const processed = requests.shift();
-      const med = medicines.find(m => m.id === processed.medId);
-      if (med) med.qty += processed.qty;
-      alert(`Dequeued & Restocked: Added ${processed.qty} units to ${med ? med.name : processed.medId}`);
-      renderDashboard();
+      const order = requests.shift();
+      const target = medicines.find(m => m.id === order.medId);
+      if (target) target.qty += order.qty;
+      renderOverview();
       renderQueue();
     }
 
     function deleteMed(id) {
-      if (!confirm(`Are you sure you want to delete ID ${id}?`)) return;
+      if (!confirm(`Delete medicine ID ${id}?`)) return;
       medicines = medicines.filter(m => m.id !== id);
-      renderDashboard();
+      renderOverview();
     }
 
-    function openAddModal() {
-      const id = parseInt(prompt("Enter Medicine ID (e.g. 105):", "105"));
+    function addMedicinePrompt() {
+      const id = parseInt(prompt("Medicine ID (e.g. 105):", "105"));
       if (!id) return;
-      const name = prompt("Enter Medicine Name:", "Aspirin");
+      const name = prompt("Medicine Name:", "Aspirin");
       if (!name) return;
       medicines.push({
         id: id,
         name: name,
         category: "Tablet",
         qty: 100,
-        price: 2.00,
-        expiry: "2027-09",
+        price: 2.50,
+        expiry: "2027-08",
         min: 20
       });
-      renderDashboard();
+      renderOverview();
     }
 
-    renderDashboard();
+    renderOverview();
   </script>
 </body>
 </html>

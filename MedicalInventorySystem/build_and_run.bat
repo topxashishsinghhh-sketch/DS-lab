@@ -1,8 +1,8 @@
 @echo off
-title Medical Inventory Management System - DS Lab
+title Medical Inventory Management System - DS-PBL
 color 0b
 echo ==================================================================
-echo         MEDICAL INVENTORY MANAGEMENT SYSTEM (DS LAB)
+echo         MEDICAL INVENTORY MANAGEMENT SYSTEM (DS-PBL)
 echo ==================================================================
 echo.
 echo Compiling source code (main.cpp + modules/*.cpp)...

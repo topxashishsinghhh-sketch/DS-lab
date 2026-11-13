@@ -1,6 +1,6 @@
 // ============================================================================
 // main.cpp - Medical Inventory Management System
-// Data Structures Lab Project
+// Project-Based Learning (DS-PBL)
 //
 // 4 Data Structures Used:
 //   1. Singly Linked List   - Master storage of medicine records
@@ -168,7 +168,7 @@ void handleOpenBrowser() {
 // Main Menu
 void showMenu() {
     cout << "\n============================================================\n";
-    cout << "          MEDICAL INVENTORY MANAGEMENT SYSTEM (DS LAB)       \n";
+    cout << "          MEDICAL INVENTORY MANAGEMENT SYSTEM (DS-PBL)       \n";
     cout << "============================================================\n";
     cout << "  [ LINKED LIST & HASH TABLE ]\n";
     cout << "    1. Add New Medicine\n";
