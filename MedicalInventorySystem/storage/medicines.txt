@@ -1,0 +1,6 @@
+MED101|Paracetamol|Tablet|ABC Pharma|150|2.5|2026-01-10|2027-01-10|20
+MED102|Amoxicillin|Capsule|HealthCare Ltd|15|8.75|2025-12-01|2026-10-01|25
+MED103|Cough Syrup|Syrup|MediLife|60|45|2026-05-20|2026-11-30|10
+MED110|Ibuprofen|Tablet|ABC Pharma|200|3.2|2026-02-15|2026-12-10|30
+MED104|Vitamin C|Tablet|NutriWell|8|1.5|2026-03-01|2028-03-15|20
+MED105|Antacid Gel|Syrup|MediLife|90|30|2026-06-05|2026-12-10|15
