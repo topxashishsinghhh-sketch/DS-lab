@@ -34,6 +34,7 @@ public:
     bool enqueue(int medId, const string& medName, int qty);
     bool dequeue(StockRequest& result);
     void display() const;
+    StockRequest getAt(int i) const { return items[(front + i) % MAX_QUEUE]; }
 };
 
 #endif
