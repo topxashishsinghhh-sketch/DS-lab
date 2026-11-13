@@ -723,6 +723,19 @@ void showDataStructureInspector() {
     }
 }
 
+// Action 20: Launch Interactive Web Browser UI
+void openBrowserUI() {
+    cout << "\n  [*] Launching Interactive Web UI in your default browser...\n";
+    #ifdef _WIN32
+        system("start gui.html");
+    #elif __APPLE__
+        system("open gui.html");
+    #else
+        system("xdg-open gui.html");
+    #endif
+    cout << "  [SUCCESS] Opened gui.html! Check your browser window.\n";
+}
+
 // ============================================================================
 //  SECTION 5: MAIN MENU & RUNTIME LOOP
 // ============================================================================
@@ -767,6 +780,7 @@ void showMenu() {
     cout << "   17. Exit System\n";
     cout << "   18. Hash Table Internals & Collisions Demo\n";
     cout << "   19. [VIVA DEMO] Visual Data Structure Inspector\n";
+    cout << "   20. [BROWSER GUI] Launch Interactive UI in Browser\n";
     cout << "  ==================================================================\n";
 }
 
@@ -778,7 +792,7 @@ int main() {
     int choice = 0;
     while (choice != 17) {
         showMenu();
-        choice = readInt("  Enter your choice (1-19): ", 1);
+        choice = readInt("  Enter your choice (1-20): ", 1);
 
         switch (choice) {
             case 1:  addNewMedicine();            break;
@@ -803,8 +817,9 @@ int main() {
                 break;
             case 18: showHashTableDemo();         break;
             case 19: showDataStructureInspector();break;
+            case 20: openBrowserUI();             break;
             default:
-                cout << "  [!] Invalid selection. Please enter a number from 1 to 19.\n";
+                cout << "  [!] Invalid selection. Please enter a number from 1 to 20.\n";
                 break;
         }
 
