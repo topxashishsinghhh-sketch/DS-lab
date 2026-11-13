@@ -1,36 +1,64 @@
-// StockQueue.h - MEMBER 3 : Queue (circular array) for stock requests, FIFO
+// ============================================================================
+// modules/StockQueue.h
+// ============================================================================
+// DATA STRUCTURE: Circular Array Queue
+// ROLE: First-In, First-Out (FIFO) Order Processing
+//
+// Key Concepts for Viva:
+// 1. FIFO Discipline: The earliest request created is the first to be processed.
+// 2. Wrap-Around Logic (Modulo Arithmetic):
+//    `rear = (rear + 1) % MAX_REQUESTS`
+//    `front = (front + 1) % MAX_REQUESTS`
+//    This allows freed array slots at the beginning of the buffer to be reused
+//    without costly O(n) array element shifts!
+// 3. Overflow & Underflow Protection:
+//    - Overflow occurs when `count == MAX_REQUESTS`.
+//    - Underflow occurs when `count == 0`.
+//
+// Time Complexity:
+// - Enqueue : O(1)
+// - Dequeue : O(1)
+// - Front   : O(1)
+// ============================================================================
+
 #ifndef STOCKQUEUE_H
 #define STOCKQUEUE_H
 
-#include <iostream>
 #include "../common/StockRequest.h"
-using namespace std;
+#include <string>
 
-const int MAX_REQUESTS = 10;     // fixed size of the queue array
+const int MAX_REQUESTS = 15; // Queue buffer capacity
 
 class StockQueue {
 private:
-    StockRequest items[MAX_REQUESTS];   // the array
-    int frontIndex;                     // where the oldest request is
-    int rearIndex;                      // where the newest request is
-    int count;                          // how many requests are waiting
-    int nextNumber;                     // used to create REQ001, REQ002 ...
+    StockRequest items[MAX_REQUESTS]; // Static circular array buffer
+    int frontIndex;                   // Points to the oldest request (dequeue point)
+    int rearIndex;                    // Points to the latest request (enqueue point)
+    int count;                        // Number of active requests currently queued
+    int nextNumber;                   // Counter for generating ID strings ("REQ001")
 
 public:
     StockQueue();
 
-    bool isEmpty();
-    bool isFull();
-    bool enqueue(const StockRequest& r);      // false = overflow
-    bool dequeue(StockRequest& out);          // false = underflow
-    bool front(StockRequest& out);            // look at oldest, don't remove
-    void display();
+    // Queue status
+    bool isEmpty() const;
+    bool isFull() const;
+    int size() const;
 
+    // Core queue operations
+    bool enqueue(const StockRequest& r);
+    bool dequeue(StockRequest& out);
+    bool front(StockRequest& out) const;
+
+    // Display & Visualization
+    void display() const;
+    void displayVisualQueue() const;
+
+    // ID generation & persistence helpers
     string makeRequestId();
-    int getNextNumber();
+    int getNextNumber() const;
     void setNextNumber(int n);
-    int size();
-    StockRequest getAt(int position);         // position 0 = oldest
+    StockRequest getAt(int position) const; // 0 = front (oldest), count-1 = newest
 };
 
-#endif
+#endif // STOCKQUEUE_H

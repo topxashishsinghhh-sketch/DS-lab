@@ -1,45 +1,70 @@
-# Medical Inventory Management System (C++17, Console)
+# Medical Inventory Management System — Data Structures Lab
 
-## Build and run
-    g++ -std=c++17 main.cpp modules/*.cpp -o inventory
-    ./inventory          (Windows: inventory.exe)
-Run it from the project folder so it can find the `storage/` folder.
+A complete, production-grade **Data Structures Lab Final Project** in C++17 featuring both a **Console Interface** (with live ASCII Data Structure Inspectors) and an **Interactive Web Dashboard GUI** (`gui.html`).
 
-## Who owns what
-| Member | Files | Data structure | Functions to explain |
-|---|---|---|---|
-| 1 | modules/HashTable.h/.cpp | Hash Table + chaining | hashFunction, insert, search, update, remove, displayTable |
-| 2 | modules/ExpiryBST.h/.cpp | Binary Search Tree | insertNode, searchNode, inorderPrint, expiredPrint, expiringPrint, remove |
-| 3 | modules/StockQueue.h/.cpp | Circular array Queue | enqueue, dequeue, front, isFull, isEmpty, display |
-| 4 | modules/InventoryList.h/.cpp | Singly Linked List | addMedicine, deleteMedicine, findMedicine, updateMedicine, stockIn/Out |
-| All | common/*.h, main.cpp | Shared structs, menu, files | addToAllStructures, load/save |
+---
 
-## The one idea that ties it together
-The Linked List OWNS the medicine records. The Hash Table and BST are only INDEXES:
-- Hash Table: ID -> pointer to the record in the list
-- BST: expiry date -> list of IDs
-See `addToAllStructures()` and `deleteMedicine()` in main.cpp.
+## 🏗️ 4 Core Data Structures Implemented From Scratch
 
-## Demo script for the teacher
-1. Option 3, search `MED101` -> Hash Table lookup.
-2. Option 18 -> show buckets; MED110 and MED101 share Bucket 8 (collision, chaining).
-3. Option 6 -> inorder traversal prints dates in ascending order.
-4. Option 8, enter 30 -> medicines expiring in 30 days.
-5. Option 13 then 12 -> oldest request (REQ001) is processed first (FIFO).
-6. Option 1 then 2 -> add a medicine, see it in the list.
-7. Option 17 -> exit, reopen, data is still there (file handling).
+1. **Singly Linked List** (`modules/InventoryList.h / .cpp`)
+   - **Role**: Primary Master Storage for all medicine records.
+   - **Properties**: Dynamic heap nodes (`Node*`), tail append, linear search, node unlinking.
+2. **Hash Table with Chaining** (`modules/HashTable.h / .cpp`)
+   - **Role**: Instant $O(1)$ medicine lookup by ID.
+   - **Properties**: Custom ASCII modulo hash function, 11 buckets, separate chaining for collision resolution (e.g. `MED101` and `MED110` chain in Bucket 8).
+3. **Binary Search Tree** (`modules/ExpiryBST.h / .cpp`)
+   - **Role**: Chronological index of medicine expiry dates.
+   - **Properties**: Left child < Root < Right child, in-order traversal for chronological sorting, recursive search & node deletion.
+4. **Circular Array Queue** (`modules/StockQueue.h / .cpp`)
+   - **Role**: First-In, First-Out (FIFO) processing of restocking requests.
+   - **Properties**: Array buffer with modulo wrap-around `(rear + 1) % MAX_REQUESTS`, zero memory drift, $O(1)$ enqueue and dequeue.
 
-## Data files (storage/)
-medicines.txt: ID|name|category|manufacturer|qty|price|mfgDate|expiryDate|minStock
-requests.txt : first line = next request number, then ID|medicineID|qty|date|status
-Sample expiry dates are set around November 2026; edit medicines.txt to get expired/expiring examples for your demo day.
+---
 
-## Complexity
-Hash Table search/insert: avg O(1), worst O(n) | BST search/insert: avg O(log n), worst O(n)
-Queue enqueue/dequeue: O(1) | Linked List add (tail) / search / delete: O(n)
+## 🚀 How to Build & Run
 
-## Design choices (be ready to explain)
-- Linked list adds at the tail so the file order stays stable after each save/load.
-- BST is a normal (unbalanced) tree; deleting a medicine removes its ID from the node's list but keeps the node.
-- Queue is circular so freed slots are reused (the % MAX_REQUESTS trick).
-- Dates are YYYY-MM-DD strings, so `date1 < date2` compares correctly.
+### Method 1: One-Click Batch File (Windows)
+Double-click:
+```cmd
+build_and_run.bat
+```
+This automatically compiles `inventory.exe` and launches both the console app and the browser GUI.
+
+### Method 2: Manual Terminal Build
+```bash
+g++ -std=c++17 main.cpp modules/*.cpp -o inventory.exe
+./inventory.exe
+```
+
+---
+
+## 🎨 Interactive Visual Web UI
+Open `gui.html` in any browser (Google Chrome, Edge, Firefox) by double-clicking it.
+- **No dependencies required** (pure HTML5 / CSS3 / JavaScript).
+- **Interactive animated diagrams** for the Linked List, Hash Table, Circular Queue, and Expiry BST.
+- **Teacher Viva Guide Tab** with answers to top exam/defense questions.
+
+---
+
+## 📂 Project Organization
+```
+MedicalInventorySystem/
+├── build_and_run.bat        # Windows build and run launcher
+├── gui.html                 # Companion Interactive Visual GUI
+├── main.cpp                 # Main controller and synchronization logic
+├── TEACHER_VIVA_GUIDE.md    # Detailed viva defense questions & answers
+├── README.md                # Project documentation
+├── common/
+│   ├── DateUtil.h           # Date conversion & validation helpers
+│   ├── Medicine.h           # Master Medicine struct definition
+│   └── StockRequest.h       # Restock order request definition
+├── modules/
+│   ├── ExpiryBST.h / .cpp   # Binary Search Tree (Expiry dates)
+│   ├── HashTable.h / .cpp   # Hash Table with Chaining (O(1) ID lookup)
+│   ├── InventoryList.h/.cpp # Singly Linked List (Master records)
+│   └── StockQueue.h / .cpp  # Circular Array Queue (FIFO orders)
+└── storage/
+    ├── medicines.txt        # Persisted inventory records
+    ├── requests.txt         # Persisted pending requests
+    └── inventory_report.txt # Exported audit report
+```

@@ -1,9 +1,24 @@
-// main.cpp - Menu + integration. It only COORDINATES the four modules.
-// Compile:  g++ -std=c++17 main.cpp modules/*.cpp -o inventory
+// ============================================================================
+// main.cpp - Medical Inventory Management System
+// ============================================================================
+// Complete integration of the 4 Core Data Structures:
+//   1. Singly Linked List   (modules/InventoryList) - Owns the medicine records
+//   2. Hash Table + Chaining (modules/HashTable)     - Fast O(1) ID lookup
+//   3. Binary Search Tree   (modules/ExpiryBST)     - Chronological expiry index
+//   4. Circular Array Queue (modules/StockQueue)    - FIFO stock requests
+//
+// Build Command:
+//   g++ -std=c++17 main.cpp modules/*.cpp -o inventory
+// ============================================================================
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
+#include <iomanip>
+#include <limits>
+#include <algorithm>
+
 #include "common/Medicine.h"
 #include "common/StockRequest.h"
 #include "common/DateUtil.h"
@@ -11,522 +26,792 @@
 #include "modules/HashTable.h"
 #include "modules/ExpiryBST.h"
 #include "modules/StockQueue.h"
+
 using namespace std;
 
+// Storage File Paths
 const string MEDICINE_FILE = "storage/medicines.txt";
 const string REQUEST_FILE  = "storage/requests.txt";
 const string REPORT_FILE   = "storage/inventory_report.txt";
 
-// The four data structures (one object each)
-InventoryList inventory;     // Member 4 - Linked List (owns the records)
-HashTable     hashTable;     // Member 1 - Hash Table  (search index)
-ExpiryBST     expiryTree;    // Member 2 - BST         (expiry index)
-StockQueue    requestQueue;  // Member 3 - Queue       (stock requests)
+// Global instances of our 4 Data Structures
+InventoryList inventory;     // Linked List (Primary Storage)
+HashTable     hashTable;     // Hash Table (ID Search Index)
+ExpiryBST     expiryTree;    // BST (Expiry Date Index)
+StockQueue    requestQueue;  // Circular Queue (Request Buffer)
 
-// =====================================================================
-//  INPUT HELPERS - read from keyboard safely
-// =====================================================================
+// ============================================================================
+//  SECTION 1: BULLET-PROOF INPUT UTILITIES
+// ============================================================================
+
+// Safely reads a non-empty string line from standard input
 string readLine(const string& prompt) {
     string s;
-    cout << prompt;
-    if (!getline(cin, s)) exit(0);     // end of input -> stop program
-    return s;
+    while (true) {
+        cout << prompt;
+        if (!getline(cin, s)) {
+            cin.clear();
+            return "";
+        }
+        // Trim leading and trailing whitespace
+        size_t first = s.find_first_not_of(" \t\r\n");
+        if (first == string::npos) {
+            // User just hit Enter; continue if empty is not allowed, or return empty
+            return "";
+        }
+        size_t last = s.find_last_not_of(" \t\r\n");
+        return s.substr(first, (last - first + 1));
+    }
 }
 
-// Text that must not be empty. '|' is replaced because it separates fields in the file
+// Reads required text; replaces delimiter '|' to prevent file corruption
 string readText(const string& prompt) {
     while (true) {
         string s = readLine(prompt);
-        for (int i = 0; i < (int)s.length(); i++) {
-            if (s[i] == '|') s[i] = '/';
+        if (!s.empty()) {
+            for (char &c : s) {
+                if (c == '|') c = '/';
+            }
+            return s;
         }
-        if (s != "") return s;
-        cout << "  Cannot be empty. Try again." << endl;
+        cout << "    [!] Field cannot be empty. Please enter a value.\n";
     }
 }
 
+// Reads and capitalizes an alphanumeric identifier (e.g., "med101" -> "MED101")
 string readId(const string& prompt) {
     string s = readText(prompt);
-    for (int i = 0; i < (int)s.length(); i++) s[i] = toupper(s[i]);   // med101 -> MED101
+    for (char &c : s) {
+        c = toupper(static_cast<unsigned char>(c));
+    }
     return s;
 }
 
+// Safely reads an integer with a minimum threshold
 int readInt(const string& prompt, int minValue) {
     while (true) {
         string s = readLine(prompt);
+        if (cin.eof()) {
+            return 17; // Cleanly trigger exit on EOF/Ctrl+C
+        }
         try {
-            size_t used;
-            int value = stoi(s, &used);
-            if (used == s.length() && value >= minValue) return value;
-        } catch (...) { }
-        cout << "  Enter a whole number (minimum " << minValue << ")." << endl;
+            size_t pos = 0;
+            int val = stoi(s, &pos);
+            if (pos == s.length() && val >= minValue) {
+                return val;
+            }
+        } catch (...) {}
+        cout << "    [!] Invalid integer (minimum " << minValue << "). Try again.\n";
     }
 }
 
+// Safely reads a monetary floating-point number
 double readPrice(const string& prompt) {
     while (true) {
         string s = readLine(prompt);
+        if (cin.eof()) {
+            return 0.0;
+        }
         try {
-            size_t used;
-            double value = stod(s, &used);
-            if (used == s.length() && value >= 0) return value;
-        } catch (...) { }
-        cout << "  Enter a valid price (0 or more)." << endl;
+            size_t pos = 0;
+            double val = stod(s, &pos);
+            if (pos == s.length() && val >= 0.0) {
+                return val;
+            }
+        } catch (...) {}
+        cout << "    [!] Invalid price (must be >= 0). Try again.\n";
     }
 }
 
+// Safely reads a date strictly matching "YYYY-MM-DD"
 string readDate(const string& prompt) {
     while (true) {
         string s = readLine(prompt);
-        if (isValidDate(s)) return s;
-        cout << "  Use the format YYYY-MM-DD (example 2027-01-10)." << endl;
+        if (isValidDate(s)) {
+            return s;
+        }
+        cout << "    [!] Invalid format. Must be YYYY-MM-DD (e.g. 2027-01-15).\n";
     }
 }
 
-void pause() {
-    readLine("\n  Press Enter to continue...");
+// Waits for user to press Enter before returning to menu
+void pauseScreen() {
+    cout << "\n  >> Press [Enter] to return to menu...";
+    string dummy;
+    getline(cin, dummy);
 }
 
-// =====================================================================
-//  INTEGRATION - keep Linked List, Hash Table and BST in sync
-// =====================================================================
+// ============================================================================
+//  SECTION 2: MULTI-STRUCTURE SYNCHRONIZATION
+// ============================================================================
+// The golden rule of this system:
+// 1. Linked List OWNS the Medicine record.
+// 2. Hash Table stores the Medicine ID and a POINTER to the Linked List record.
+// 3. Expiry BST stores the Expiry Date and the Medicine ID.
+// ============================================================================
 
-// Used by "Add Medicine" and by "Load from file"
 void addToAllStructures(const Medicine& m) {
-    inventory.addMedicine(m);                           // 1. Linked List stores the record
-    Medicine* p = inventory.findMedicine(m.medicineID); //    get pointer to that record
-    hashTable.insert(m.medicineID, p);                  // 2. Hash Table indexes the ID
-    expiryTree.insert(m.expiryDate, m.medicineID);      // 3. BST indexes the expiry date
+    // 1. Add record to master Singly Linked List
+    inventory.addMedicine(m);
+
+    // 2. Obtain direct pointer to the newly added record in the Linked List
+    Medicine* ptr = inventory.findMedicine(m.medicineID);
+
+    // 3. Insert into Hash Table index for O(1) lookup by ID
+    hashTable.insert(m.medicineID, ptr);
+
+    // 4. Insert into Binary Search Tree for O(log n) chronological lookup by date
+    expiryTree.insert(m.expiryDate, m.medicineID);
 }
 
-// =====================================================================
-//  FILE HANDLING
-// =====================================================================
+// ============================================================================
+//  SECTION 3: FILE PERSISTENCE (storage/)
+// ============================================================================
 
-// Split "a|b|c" into a vector of pieces
+// Splits a pipe-delimited string line: "A|B|C" -> ["A", "B", "C"]
 vector<string> splitLine(const string& line) {
     vector<string> parts;
-    string piece = "";
-    for (int i = 0; i < (int)line.length(); i++) {
-        if (line[i] == '|') {
-            parts.push_back(piece);
-            piece = "";
+    string current = "";
+    for (char ch : line) {
+        if (ch == '|') {
+            parts.push_back(current);
+            current = "";
         } else {
-            piece = piece + line[i];
+            current += ch;
         }
     }
-    parts.push_back(piece);
+    parts.push_back(current);
     return parts;
 }
 
+// Loads medicines from storage/medicines.txt into all three data structures
 void loadMedicines() {
     ifstream file(MEDICINE_FILE);
     if (!file) {
-        cout << "  No medicines file found. Starting with empty inventory." << endl;
+        cout << "  [*] Note: storage/medicines.txt not found. Initializing sample data.\n";
+        // Pre-populate with standard sample records so demo is ready out of the box
+        Medicine sample1 = {"MED101", "Paracetamol", "Tablet", "ABC Pharma", 150, 2.50, "2026-01-10", "2027-01-10", 20};
+        Medicine sample2 = {"MED102", "Amoxicillin", "Capsule", "HealthCare Ltd", 15, 8.75, "2025-12-01", "2026-10-01", 25};
+        Medicine sample3 = {"MED103", "Cough Syrup", "Syrup", "MediLife", 60, 45.00, "2026-05-20", "2026-11-30", 10};
+        Medicine sample4 = {"MED110", "Ibuprofen", "Tablet", "ABC Pharma", 200, 3.20, "2026-02-15", "2026-12-10", 30};
+        Medicine sample5 = {"MED104", "Vitamin C", "Tablet", "NutriWell", 8, 1.50, "2026-03-01", "2028-03-15", 20};
+        Medicine sample6 = {"MED105", "Antacid Gel", "Syrup", "MediLife", 90, 30.00, "2026-06-05", "2026-12-10", 15};
+
+        addToAllStructures(sample1);
+        addToAllStructures(sample2);
+        addToAllStructures(sample3);
+        addToAllStructures(sample4);
+        addToAllStructures(sample5);
+        addToAllStructures(sample6);
         return;
     }
+
     string line;
     int loaded = 0, skipped = 0;
     while (getline(file, line)) {
-        if (line == "") continue;
+        if (line.empty()) continue;
         vector<string> f = splitLine(line);
         try {
             if (f.size() != 9) throw 1;
             Medicine m;
-            m.medicineID = f[0];
-            m.name = f[1];
-            m.category = f[2];
-            m.manufacturer = f[3];
-            m.quantity = stoi(f[4]);
-            m.price = stod(f[5]);
+            m.medicineID        = f[0];
+            m.name              = f[1];
+            m.category          = f[2];
+            m.manufacturer      = f[3];
+            m.quantity          = stoi(f[4]);
+            m.price             = stod(f[5]);
             m.manufacturingDate = f[6];
-            m.expiryDate = f[7];
-            m.minStockLevel = stoi(f[8]);
+            m.expiryDate        = f[7];
+            m.minStockLevel     = stoi(f[8]);
+
             if (!isValidDate(m.manufacturingDate) || !isValidDate(m.expiryDate)) throw 1;
-            if (hashTable.search(m.medicineID) != nullptr) throw 1;   // duplicate ID
+            if (hashTable.search(m.medicineID) != nullptr) throw 1; // Duplicate key check
+
             addToAllStructures(m);
             loaded++;
         } catch (...) {
-            skipped++;      // malformed line
+            skipped++;
         }
     }
-    cout << "  Loaded " << loaded << " medicine(s)";
-    if (skipped > 0) cout << " (" << skipped << " bad line(s) skipped)";
-    cout << "." << endl;
+    cout << "  [OK] Successfully loaded " << loaded << " medicine records from file";
+    if (skipped > 0) cout << " (" << skipped << " malformed rows ignored)";
+    cout << ".\n";
 }
 
+// Saves all medicines currently in the Linked List back to file
 void saveMedicines() {
     ofstream file(MEDICINE_FILE);
+    if (!file) return;
+
     Node* current = inventory.getHead();
     while (current != nullptr) {
-        Medicine& m = current->data;
+        const Medicine& m = current->data;
         file << m.medicineID << "|" << m.name << "|" << m.category << "|"
              << m.manufacturer << "|" << m.quantity << "|" << m.price << "|"
              << m.manufacturingDate << "|" << m.expiryDate << "|"
-             << m.minStockLevel << endl;
+             << m.minStockLevel << "\n";
         current = current->next;
     }
 }
 
-// requests.txt: first line = next request number, then one request per line
+// Loads pending stock requests into the Circular Queue
 void loadRequests() {
     ifstream file(REQUEST_FILE);
     if (!file) return;
+
     string line;
     if (getline(file, line)) {
-        try { requestQueue.setNextNumber(stoi(line)); } catch (...) { }
+        try {
+            requestQueue.setNextNumber(stoi(line));
+        } catch (...) {}
     }
+
     int loaded = 0;
     while (getline(file, line)) {
-        if (line == "") continue;
+        if (line.empty()) continue;
         vector<string> f = splitLine(line);
         try {
             if (f.size() != 5) throw 1;
             StockRequest r;
-            r.requestID = f[0];
-            r.medicineID = f[1];
+            r.requestID         = f[0];
+            r.medicineID        = f[1];
             r.requestedQuantity = stoi(f[2]);
-            r.requestDate = f[3];
-            r.status = f[4];
+            r.requestDate       = f[3];
+            r.status            = f[4];
             if (requestQueue.enqueue(r)) loaded++;
-        } catch (...) { }
+        } catch (...) {}
     }
-    cout << "  Loaded " << loaded << " pending request(s)." << endl;
+    cout << "  [OK] Successfully loaded " << loaded << " pending order requests.\n";
 }
 
+// Saves pending queue requests and the next request sequence number
 void saveRequests() {
     ofstream file(REQUEST_FILE);
-    file << requestQueue.getNextNumber() << endl;
+    if (!file) return;
+
+    file << requestQueue.getNextNumber() << "\n";
     for (int i = 0; i < requestQueue.size(); i++) {
         StockRequest r = requestQueue.getAt(i);
         file << r.requestID << "|" << r.medicineID << "|" << r.requestedQuantity
-             << "|" << r.requestDate << "|" << r.status << endl;
+             << "|" << r.requestDate << "|" << r.status << "\n";
     }
 }
 
 void saveAll() {
     saveMedicines();
     saveRequests();
-    cout << "  Data saved." << endl;
+    cout << "  [+] All inventory and order data saved safely to storage/ files.\n";
 }
 
-// =====================================================================
-//  MENU ACTIONS
-// =====================================================================
+// ============================================================================
+//  SECTION 4: SYSTEM CONTROLLER ACTIONS
+// ============================================================================
 
-// 1. Add New Medicine
+// Action 1: Add New Medicine
 void addNewMedicine() {
-    cout << "\n--- ADD NEW MEDICINE ---" << endl;
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |                     ADD NEW MEDICINE                        |\n";
+    cout << "  +-------------------------------------------------------------+\n";
+
     Medicine m;
-    m.medicineID = readId("  Medicine ID (example MED101): ");
-    if (hashTable.search(m.medicineID) != nullptr) {      // Hash Table checks duplicates
-        cout << "  Error: this ID already exists." << endl;
+    m.medicineID = readId("  Enter Medicine ID (e.g. MED106): ");
+
+    if (hashTable.search(m.medicineID) != nullptr) {
+        cout << "  [ERROR] Medicine with ID '" << m.medicineID << "' already exists in inventory!\n";
         return;
     }
-    m.name = readText("  Name: ");
-    m.category = readText("  Category (Tablet/Syrup/...): ");
-    m.manufacturer = readText("  Manufacturer: ");
-    m.quantity = readInt("  Quantity: ", 0);
-    m.price = readPrice("  Price per unit: ");
-    m.manufacturingDate = readDate("  Manufacturing date (YYYY-MM-DD): ");
-    m.expiryDate = readDate("  Expiry date (YYYY-MM-DD): ");
+
+    m.name = readText("  Enter Medicine Name             : ");
+    m.category = readText("  Enter Category (Tablet/Syrup...) : ");
+    m.manufacturer = readText("  Enter Manufacturer Name         : ");
+    m.quantity = readInt("  Enter Starting Stock Quantity   : ", 0);
+    m.price = readPrice("  Enter Unit Price ($)            : ");
+    m.manufacturingDate = readDate("  Enter Mfg Date (YYYY-MM-DD)     : ");
+    m.expiryDate = readDate("  Enter Expiry Date (YYYY-MM-DD)  : ");
+
     if (m.expiryDate <= m.manufacturingDate) {
-        cout << "  Error: expiry date must be after manufacturing date." << endl;
+        cout << "  [ERROR] Expiry date must strictly be AFTER the manufacturing date!\n";
         return;
     }
-    m.minStockLevel = readInt("  Minimum stock level: ", 0);
+
+    m.minStockLevel = readInt("  Enter Minimum Safe Stock Level  : ", 0);
 
     addToAllStructures(m);
-    cout << "\n  Medicine added successfully!" << endl;
+    saveAll();
+
+    cout << "\n  [SUCCESS] Medicine '" << m.name << "' successfully synchronized across all structures!\n";
+    printMedicineCard(m);
 }
 
-// 2. View All Medicines
+// Action 2: View All Medicines
 void viewAllMedicines() {
-    cout << "\n--- ALL MEDICINES ---" << endl;
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |                     COMPLETE INVENTORY                      |\n";
+    cout << "  +-------------------------------------------------------------+\n";
     inventory.displayInventory();
 }
 
-// 3. Search Medicine by ID
+// Action 3: Search Medicine by ID (Demonstrates O(1) Hash Table)
 void searchMedicine() {
-    cout << "\n--- SEARCH MEDICINE ---" << endl;
-    string id = readId("  Enter Medicine ID: ");
-    Medicine* m = hashTable.search(id);                   // Hash Table lookup
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |             SEARCH MEDICINE (HASH TABLE O(1))               |\n";
+    cout << "  +-------------------------------------------------------------+\n";
+
+    string id = readId("  Enter Medicine ID to search: ");
+    int bucket = hashTable.getBucketIndex(id);
+    cout << "  [*] Hash function computed: hash(\"" << id << "\") -> Bucket [" << bucket << "]\n";
+
+    Medicine* m = hashTable.search(id);
     if (m == nullptr) {
-        cout << "  Medicine not found." << endl;
+        cout << "  [!] Medicine ID '" << id << "' not found in Hash Table.\n";
     } else {
-        cout << "\n  Medicine found:" << endl;
-        printMedicineDetails(*m);
+        cout << "  [FOUND] Retrieved directly from Bucket [" << bucket << "] via pointer dereference:\n";
+        printMedicineCard(*m);
     }
 }
 
-// 4. Update Medicine Details
+// Action 4: Update Medicine Details
 void updateMedicine() {
-    cout << "\n--- UPDATE MEDICINE ---" << endl;
-    string id = readId("  Enter Medicine ID: ");
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |                   UPDATE MEDICINE DETAILS                   |\n";
+    cout << "  +-------------------------------------------------------------+\n";
+
+    string id = readId("  Enter Medicine ID to update: ");
     Medicine* p = hashTable.search(id);
     if (p == nullptr) {
-        cout << "  Medicine not found." << endl;
+        cout << "  [!] Medicine not found.\n";
         return;
     }
-    Medicine updated = *p;            // work on a copy
+
+    printMedicineCard(*p);
+
+    cout << "  Select Field to Modify:\n";
+    cout << "    [1] Medicine Name\n";
+    cout << "    [2] Unit Price\n";
+    cout << "    [3] Expiry Date (Updates BST Index)\n";
+    cout << "    [4] Minimum Stock Level\n";
+    cout << "    [0] Cancel\n";
+
+    int choice = readInt("  Enter option (0-4): ", 0);
+    Medicine updated = *p;
     string oldExpiry = p->expiryDate;
 
-    cout << "  What do you want to update?" << endl;
-    cout << "    1. Name" << endl;
-    cout << "    2. Price" << endl;
-    cout << "    3. Expiry date" << endl;
-    cout << "    4. Minimum stock level" << endl;
-    int choice = readInt("  Choice: ", 1);
-
-    if (choice == 1) updated.name = readText("  New name: ");
-    else if (choice == 2) updated.price = readPrice("  New price: ");
-    else if (choice == 3) updated.expiryDate = readDate("  New expiry date: ");
-    else if (choice == 4) updated.minStockLevel = readInt("  New minimum stock: ", 0);
-    else { cout << "  Invalid choice." << endl; return; }
-
-    inventory.updateMedicine(id, updated);                // Linked List changes the record
-    if (updated.expiryDate != oldExpiry) {                // BST must follow the change
-        expiryTree.remove(oldExpiry, id);
-        expiryTree.insert(updated.expiryDate, id);
-    }
-    cout << "  Medicine updated." << endl;
-}
-
-// 5. Delete Medicine
-void deleteMedicine() {
-    cout << "\n--- DELETE MEDICINE ---" << endl;
-    string id = readId("  Enter Medicine ID: ");
-    Medicine* p = hashTable.search(id);
-    if (p == nullptr) {
-        cout << "  Medicine not found." << endl;
+    if (choice == 1) {
+        updated.name = readText("  Enter new Name: ");
+    } else if (choice == 2) {
+        updated.price = readPrice("  Enter new Price ($): ");
+    } else if (choice == 3) {
+        updated.expiryDate = readDate("  Enter new Expiry Date (YYYY-MM-DD): ");
+    } else if (choice == 4) {
+        updated.minStockLevel = readInt("  Enter new Minimum Stock Level: ", 0);
+    } else {
+        cout << "  Update cancelled.\n";
         return;
     }
-    string expiry = p->expiryDate;       // remember BEFORE the record is deleted
 
-    expiryTree.remove(expiry, id);       // remove from BST
-    hashTable.remove(id);                // remove from Hash Table
-    inventory.deleteMedicine(id);        // remove from Linked List
-    cout << "  Medicine deleted from all structures." << endl;
+    inventory.updateMedicine(id, updated);
+
+    // If expiry date was modified, update the BST index as well
+    if (updated.expiryDate != oldExpiry) {
+        expiryTree.remove(oldExpiry, id);
+        expiryTree.insert(updated.expiryDate, id);
+        cout << "  [*] Binary Search Tree re-indexed: moved from " << oldExpiry << " to " << updated.expiryDate << "\n";
+    }
+
+    saveAll();
+    cout << "  [SUCCESS] Medicine record updated successfully.\n";
 }
 
-// 6. Manage Expiry Dates (sorted view + search a date)
+// Action 5: Delete Medicine
+void deleteMedicine() {
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |                      DELETE MEDICINE                        |\n";
+    cout << "  +-------------------------------------------------------------+\n";
+
+    string id = readId("  Enter Medicine ID to delete: ");
+    Medicine* p = hashTable.search(id);
+    if (p == nullptr) {
+        cout << "  [!] Medicine not found.\n";
+        return;
+    }
+
+    cout << "  Target to be removed:\n";
+    printMedicineCard(*p);
+
+    string confirm = readLine("  Are you sure you want to permanently delete this medicine? (y/N): ");
+    if (confirm != "y" && confirm != "Y") {
+        cout << "  Deletion cancelled.\n";
+        return;
+    }
+
+    string expiry = p->expiryDate;
+
+    // Remove synchronously from all structures:
+    expiryTree.remove(expiry, id); // 1. Remove from BST
+    hashTable.remove(id);          // 2. Remove from Hash Table
+    inventory.deleteMedicine(id);  // 3. Remove from master Linked List
+
+    saveAll();
+    cout << "  [SUCCESS] Medicine '" << id << "' permanently deleted from all data structures.\n";
+}
+
+// Action 6: Manage Expiry Dates (BST In-Order Display)
 void manageExpiry() {
-    cout << "\n--- EXPIRY DATES (earliest first) ---" << endl;
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |          MEDICINES EXPIRY CHRONOLOGY (BST IN-ORDER)         |\n";
+    cout << "  +-------------------------------------------------------------+\n";
     expiryTree.inorder(hashTable);
-    cout << "\n  Search a specific expiry date? (press Enter to skip)" << endl;
-    string d = readLine("  Date (YYYY-MM-DD): ");
-    if (d == "") return;
-    if (!isValidDate(d)) { cout << "  Invalid date format." << endl; return; }
+
+    cout << "\n  Search a specific expiry date? (Press Enter to skip):\n";
+    string d = readLine("  Enter Date (YYYY-MM-DD) or blank: ");
+    if (d.empty()) return;
+
+    if (!isValidDate(d)) {
+        cout << "  [!] Invalid date format.\n";
+        return;
+    }
+
     BSTNode* node = expiryTree.search(d);
     if (node == nullptr || node->ids.empty()) {
-        cout << "  No medicine expires on " << d << "." << endl;
+        cout << "  [!] No medicines in inventory expire on " << d << ".\n";
     } else {
-        cout << "  Medicines expiring on " << d << ":" << endl;
-        for (int i = 0; i < (int)node->ids.size(); i++) {
-            cout << "    " << node->ids[i] << endl;
+        cout << "  [FOUND] Medicines expiring on " << d << ":\n";
+        for (const string& id : node->ids) {
+            Medicine* m = hashTable.search(id);
+            if (m) cout << "    -> " << m->medicineID << " : " << m->name << " (Stock: " << m->quantity << ")\n";
         }
     }
 }
 
-// 7. View Expired Medicines
+// Action 7: View Expired Medicines
 void viewExpired() {
-    cout << "\n--- EXPIRED MEDICINES (today: " << todayDate() << ") ---" << endl;
-    expiryTree.displayExpired(todayDate(), hashTable);
+    string today = todayDate();
+    expiryTree.displayExpired(today, hashTable);
 }
 
-// 8. View Medicines Expiring Soon
+// Action 8: View Medicines Expiring Soon
 void viewExpiringSoon() {
-    cout << "\n--- EXPIRING SOON ---" << endl;
-    int days = readInt("  Show medicines expiring within how many days? ", 1);
-    cout << endl;
-    expiryTree.displayExpiring(todayDate(), days, hashTable);
+    string today = todayDate();
+    int days = readInt("  Show medicines expiring within how many days? (1-365): ", 1);
+    expiryTree.displayExpiring(today, days, hashTable);
 }
 
-// 9. Stock-In
+// Action 9: Stock-In (Restock inventory)
 void stockIn() {
-    cout << "\n--- STOCK-IN ---" << endl;
-    string id = readId("  Medicine ID: ");
-    if (hashTable.search(id) == nullptr) { cout << "  Medicine not found." << endl; return; }
-    int qty = readInt("  Quantity to add: ", 1);
-    inventory.stockIn(id, qty);
-    cout << "  New quantity: " << hashTable.search(id)->quantity << endl;
-}
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |                      STOCK-IN (RESTOCK)                     |\n";
+    cout << "  +-------------------------------------------------------------+\n";
 
-// 10. Stock-Out
-void stockOut() {
-    cout << "\n--- STOCK-OUT ---" << endl;
-    string id = readId("  Medicine ID: ");
+    string id = readId("  Enter Medicine ID: ");
     Medicine* m = hashTable.search(id);
-    if (m == nullptr) { cout << "  Medicine not found." << endl; return; }
-    int qty = readInt("  Quantity to remove: ", 1);
+    if (m == nullptr) {
+        cout << "  [!] Medicine not found in inventory.\n";
+        return;
+    }
+
+    cout << "  Current Stock for " << m->name << " : " << m->quantity << " units.\n";
+    int qty = readInt("  Enter quantity to ADD: ", 1);
+
+    inventory.stockIn(id, qty);
+    saveAll();
+
+    cout << "  [SUCCESS] Added " << qty << " units. New quantity: " << m->quantity << " units.\n";
+}
+
+// Action 10: Stock-Out (Dispense medicine)
+void stockOut() {
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |                     STOCK-OUT (DISPENSE)                    |\n";
+    cout << "  +-------------------------------------------------------------+\n";
+
+    string id = readId("  Enter Medicine ID: ");
+    Medicine* m = hashTable.search(id);
+    if (m == nullptr) {
+        cout << "  [!] Medicine not found in inventory.\n";
+        return;
+    }
+
+    cout << "  Current Stock for " << m->name << " : " << m->quantity << " units (Min Safe: " << m->minStockLevel << ").\n";
+    int qty = readInt("  Enter quantity to DISPENSE: ", 1);
+
     if (!inventory.stockOut(id, qty)) {
-        cout << "  Error: only " << m->quantity << " in stock." << endl;
+        cout << "  [ERROR] Insufficient stock! Only " << m->quantity << " units available.\n";
         return;
     }
-    cout << "  New quantity: " << m->quantity << endl;
+
+    saveAll();
+    cout << "  [SUCCESS] Dispensed " << qty << " units. Remaining: " << m->quantity << " units.\n";
     if (m->quantity <= m->minStockLevel) {
-        cout << "  WARNING: stock is at or below minimum level (" << m->minStockLevel << ")!" << endl;
+        cout << "  [WARNING] Stock is at or below minimum threshold (" << m->minStockLevel << ")! Reorder suggested.\n";
     }
 }
 
-// 11. Create Stock Request (ENQUEUE)
+// Action 11: Create Stock Request (Enqueue)
 void createRequest() {
-    cout << "\n--- CREATE STOCK REQUEST ---" << endl;
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |            CREATE STOCK REQUEST (QUEUE ENQUEUE)             |\n";
+    cout << "  +-------------------------------------------------------------+\n";
+
     if (requestQueue.isFull()) {
-        cout << "  Queue is FULL (overflow). Process a request first." << endl;
+        cout << "  [ERROR] Request Queue is FULL (Capacity = " << MAX_REQUESTS << ").\n";
+        cout << "  Please process pending requests before enqueuing new ones.\n";
         return;
     }
-    string id = readId("  Medicine ID: ");
-    if (hashTable.search(id) == nullptr) { cout << "  Medicine not found." << endl; return; }
+
+    string id = readId("  Enter Target Medicine ID: ");
+    Medicine* m = hashTable.search(id);
+    if (m == nullptr) {
+        cout << "  [!] Target medicine not found in inventory.\n";
+        return;
+    }
+
+    int qty = readInt("  Enter quantity to request: ", 1);
+
     StockRequest r;
-    r.requestID = requestQueue.makeRequestId();
-    r.medicineID = id;
-    r.requestedQuantity = readInt("  Quantity to request: ", 1);
-    r.requestDate = todayDate();
-    r.status = "Pending";
+    r.requestID         = requestQueue.makeRequestId();
+    r.medicineID        = id;
+    r.requestedQuantity = qty;
+    r.requestDate       = todayDate();
+    r.status            = "Pending";
+
     requestQueue.enqueue(r);
-    cout << "  Request " << r.requestID << " created." << endl;
+    saveRequests();
+
+    cout << "  [SUCCESS] Request " << r.requestID << " for " << qty << " units of "
+         << m->name << " enqueued at circular rear.\n";
 }
 
-// 12. Process Stock Request (DEQUEUE - oldest first)
+// Action 12: Process Stock Request (Dequeue - FIFO)
 void processRequest() {
-    cout << "\n--- PROCESS STOCK REQUEST ---" << endl;
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |           PROCESS STOCK REQUEST (QUEUE DEQUEUE)             |\n";
+    cout << "  +-------------------------------------------------------------+\n";
+
     StockRequest r;
     if (!requestQueue.dequeue(r)) {
-        cout << "  No pending requests (underflow)." << endl;
+        cout << "  [!] Queue Underflow: No pending requests waiting in the queue.\n";
         return;
     }
-    cout << "  Processing oldest request: " << r.requestID << endl;
-    if (hashTable.search(r.medicineID) == nullptr) {
-        cout << "  Medicine " << r.medicineID << " no longer exists. Request discarded." << endl;
-        return;
+
+    cout << "  Processing Oldest Request (FIFO):\n";
+    cout << "    Request ID : " << r.requestID << "\n";
+    cout << "    Medicine ID: " << r.medicineID << "\n";
+    cout << "    Quantity   : " << r.requestedQuantity << "\n";
+    cout << "    Date Placed: " << r.requestDate << "\n";
+
+    Medicine* m = hashTable.search(r.medicineID);
+    if (m == nullptr) {
+        cout << "  [!] Medicine " << r.medicineID << " was deleted from inventory. Discarding request.\n";
+    } else {
+        inventory.stockIn(r.medicineID, r.requestedQuantity);
+        cout << "  [SUCCESS] Stock replenished! Added " << r.requestedQuantity
+             << " units to " << m->name << ". New balance: " << m->quantity << " units.\n";
     }
-    inventory.stockIn(r.medicineID, r.requestedQuantity);
-    r.status = "Completed";
-    cout << "  Added " << r.requestedQuantity << " units to " << r.medicineID
-         << ". New quantity: " << hashTable.search(r.medicineID)->quantity << endl;
+
+    saveAll();
 }
 
-// 13. View Pending Requests
+// Action 13: View Pending Requests
 void viewRequests() {
-    cout << "\n--- PENDING REQUESTS (oldest first) ---" << endl;
+    cout << "\n  +-------------------------------------------------------------+\n";
+    cout << "  |             PENDING STOCK REQUESTS (QUEUE FIFO)             |\n";
+    cout << "  +-------------------------------------------------------------+\n";
     requestQueue.display();
 }
 
-// 14. Low Stock Medicines
+// Action 14: Low Stock Medicines Report
 void lowStock() {
-    cout << "\n--- LOW STOCK MEDICINES ---" << endl;
     inventory.displayLowStock();
 }
 
-// 15. Generate Inventory Report (writes a text file)
+// Action 15: Generate Comprehensive Inventory Report File
 void generateReport() {
     ofstream file(REPORT_FILE);
+    if (!file) {
+        cout << "  [ERROR] Could not open " << REPORT_FILE << " for writing.\n";
+        return;
+    }
+
     string today = todayDate();
-    double value = 0;
+    double totalVal = 0.0;
     Node* current = inventory.getHead();
+
     while (current != nullptr) {
-        value = value + current->data.quantity * current->data.price;
+        totalVal += (current->data.quantity * current->data.price);
         current = current->next;
     }
 
-    file << "INVENTORY REPORT - " << today << endl;
-    file << "====================================" << endl;
-    file << "Total medicines  : " << inventory.countMedicines() << endl;
-    file << "Total quantity   : " << inventory.totalQuantity() << endl;
-    file << "Inventory value  : " << value << endl;
-    file << "Pending requests : " << requestQueue.size() << endl << endl;
+    file << "========================================================================\n";
+    file << "                 HOSPITAL MEDICAL INVENTORY AUDIT REPORT                \n";
+    file << "========================================================================\n";
+    file << "Generated On    : " << today << "\n";
+    file << "Total Medicines : " << inventory.countMedicines() << "\n";
+    file << "Total Units     : " << inventory.totalQuantity() << "\n";
+    file << "Inventory Worth : $" << fixed << setprecision(2) << totalVal << "\n";
+    file << "Queued Requests : " << requestQueue.size() << "\n\n";
 
-    file << "LOW STOCK:" << endl;
+    file << "--- CRITICAL & LOW STOCK ITEMS ---\n";
     current = inventory.getHead();
+    int lowCount = 0;
     while (current != nullptr) {
         if (current->data.quantity <= current->data.minStockLevel) {
-            file << "  " << current->data.medicineID << " " << current->data.name
-                 << " (qty " << current->data.quantity << ")" << endl;
+            file << "  * [" << current->data.medicineID << "] " << left << setw(20) << current->data.name
+                 << " Qty: " << current->data.quantity << " (Threshold: " << current->data.minStockLevel << ")\n";
+            lowCount++;
         }
         current = current->next;
     }
-    file << endl << "EXPIRED:" << endl;
+    if (lowCount == 0) file << "  (None. Stock levels healthy)\n";
+
+    file << "\n--- EXPIRED INVENTORY ITEMS ---\n";
     current = inventory.getHead();
+    int expCount = 0;
     while (current != nullptr) {
         if (current->data.expiryDate < today) {
-            file << "  " << current->data.medicineID << " " << current->data.name
-                 << " (expired " << current->data.expiryDate << ")" << endl;
+            file << "  * [" << current->data.medicineID << "] " << left << setw(20) << current->data.name
+                 << " Expired On: " << current->data.expiryDate << " (Qty: " << current->data.quantity << ")\n";
+            expCount++;
         }
         current = current->next;
     }
-    cout << "\n  Report saved to " << REPORT_FILE << endl;
+    if (expCount == 0) file << "  (None. All stock unexpired)\n";
+
+    file << "\n========================================================================\n";
+    file << "Report generated successfully by Medical Inventory System\n";
+    file.close();
+
+    cout << "\n  [SUCCESS] Comprehensive audit report written to: " << REPORT_FILE << "\n";
 }
 
-// Bonus for the viva: shows buckets and collisions
-void showHashTable() {
-    cout << "\n--- HASH TABLE INTERNALS ---" << endl;
+// Action 18: Hash Table Collision & Buckets Visualizer
+void showHashTableDemo() {
     hashTable.displayTable();
+
+    cout << "\n  Would you like to see the step-by-step hash formula for an ID?\n";
+    string id = readLine("  Enter ID (e.g. MED101) or leave blank to return: ");
+    if (!id.empty()) {
+        hashTable.explainHash(id);
+    }
 }
 
-// =====================================================================
-//  MENU
-// =====================================================================
+// Action 19: Visual DS Architecture Inspector (For Viva & Presentation)
+void showDataStructureInspector() {
+    cout << "\n  ==================================================================\n";
+    cout << "                 DATA STRUCTURES LAB VISUAL INSPECTOR               \n";
+    cout << "  ==================================================================\n";
+    cout << "  Select structure to inspect visually:\n";
+    cout << "    [1] Singly Linked List  (Master Records & Heap Pointers)\n";
+    cout << "    [2] Hash Table          (Buckets & Collision Chains)\n";
+    cout << "    [3] Binary Search Tree  (Expiry Hierarchy & Branches)\n";
+    cout << "    [4] Circular Queue      (Front/Rear Slots & Modulo Arithmetic)\n";
+    cout << "    [5] All Structures Simultaneously\n";
+    cout << "    [0] Return to Main Menu\n";
+
+    int choice = readInt("  Your choice (0-5): ", 0);
+
+    if (choice == 1 || choice == 5) {
+        inventory.displayVisualList();
+    }
+    if (choice == 2 || choice == 5) {
+        hashTable.displayTable();
+    }
+    if (choice == 3 || choice == 5) {
+        expiryTree.displayVisualTree();
+    }
+    if (choice == 4 || choice == 5) {
+        requestQueue.displayVisualQueue();
+    }
+}
+
+// ============================================================================
+//  SECTION 5: MAIN MENU & RUNTIME LOOP
+// ============================================================================
+
+void printBanner() {
+    cout << "\n";
+    cout << "  ==================================================================\n";
+    cout << "  ||                                                              ||\n";
+    cout << "  ||             MEDICAL INVENTORY MANAGEMENT SYSTEM              ||\n";
+    cout << "  ||             Data Structures Laboratory Project               ||\n";
+    cout << "  ||                                                              ||\n";
+    cout << "  ||   Structures: Linked List | Hash Table | BST | Circular Queue||\n";
+    cout << "  ==================================================================\n";
+    cout << "  Today's System Date: " << todayDate() << "\n";
+}
+
 void showMenu() {
-    cout << "\n================================================" << endl;
-    cout << "       MEDICAL INVENTORY MANAGEMENT SYSTEM" << endl;
-    cout << "================================================" << endl;
-    cout << "  MEDICINES" << endl;
-    cout << "   1. Add New Medicine" << endl;
-    cout << "   2. View All Medicines" << endl;
-    cout << "   3. Search Medicine by ID" << endl;
-    cout << "   4. Update Medicine Details" << endl;
-    cout << "   5. Delete Medicine" << endl;
-    cout << "  EXPIRY" << endl;
-    cout << "   6. Manage Expiry Dates" << endl;
-    cout << "   7. View Expired Medicines" << endl;
-    cout << "   8. View Medicines Expiring Soon" << endl;
-    cout << "  STOCK" << endl;
-    cout << "   9. Stock-In" << endl;
-    cout << "  10. Stock-Out" << endl;
-    cout << "  11. Create Stock Request" << endl;
-    cout << "  12. Process Stock Request" << endl;
-    cout << "  13. View Pending Requests" << endl;
-    cout << "  REPORTS & DATA" << endl;
-    cout << "  14. Low Stock Medicines" << endl;
-    cout << "  15. Generate Inventory Report" << endl;
-    cout << "  16. Save Data" << endl;
-    cout << "  17. Exit" << endl;
-    cout << "  18. (Demo) Show Hash Table Buckets" << endl;
-    cout << "================================================" << endl;
+    printBanner();
+    cout << "  [ MEDICINE MANAGEMENT - LINKED LIST & HASH TABLE ]\n";
+    cout << "    1. Add New Medicine               (Synchronize all structures)\n";
+    cout << "    2. View All Medicines             (Singly Linked List)\n";
+    cout << "    3. Search Medicine by ID          (Hash Table O(1))\n";
+    cout << "    4. Update Medicine Details        (In-place modification)\n";
+    cout << "    5. Delete Medicine                (Deallocate from all)\n";
+    cout << "\n";
+    cout << "  [ EXPIRY MANAGEMENT - BINARY SEARCH TREE ]\n";
+    cout << "    6. View Expiry Chronology         (BST In-Order Traversal)\n";
+    cout << "    7. Audit Expired Medicines        (Dates < Today)\n";
+    cout << "    8. View Medicines Expiring Soon   (Within N days window)\n";
+    cout << "\n";
+    cout << "  [ STOCK & ORDER PROCESSING - CIRCULAR QUEUE ]\n";
+    cout << "    9. Stock-In  (Replenish inventory)\n";
+    cout << "   10. Stock-Out (Dispense to dispensary)\n";
+    cout << "   11. Create Stock Request           (Queue Enqueue - FIFO)\n";
+    cout << "   12. Process Next Stock Request     (Queue Dequeue - FIFO)\n";
+    cout << "   13. View Pending Stock Requests    (Queue Status)\n";
+    cout << "\n";
+    cout << "  [ REPORTS, VISUALIZATIONS & VIVA TOOLS ]\n";
+    cout << "   14. View Low Stock Alerts\n";
+    cout << "   15. Generate Audit Report File\n";
+    cout << "   16. Save All Data to Storage\n";
+    cout << "   17. Exit System\n";
+    cout << "   18. Hash Table Internals & Collisions Demo\n";
+    cout << "   19. [VIVA DEMO] Visual Data Structure Inspector\n";
+    cout << "  ==================================================================\n";
 }
 
 int main() {
-    cout << "Starting... today is " << todayDate() << endl;
-    loadMedicines();      // rebuilds Linked List + Hash Table + BST
-    loadRequests();       // rebuilds Queue
+    cout << "  Initializing Medical Inventory System...\n";
+    loadMedicines(); // Loads into Linked List + Hash Table + BST
+    loadRequests();  // Loads into Circular Queue
 
     int choice = 0;
     while (choice != 17) {
         showMenu();
-        choice = readInt("  Enter your choice: ", 1);
+        choice = readInt("  Enter your choice (1-19): ", 1);
 
-        if (choice == 1) addNewMedicine();
-        else if (choice == 2) viewAllMedicines();
-        else if (choice == 3) searchMedicine();
-        else if (choice == 4) updateMedicine();
-        else if (choice == 5) deleteMedicine();
-        else if (choice == 6) manageExpiry();
-        else if (choice == 7) viewExpired();
-        else if (choice == 8) viewExpiringSoon();
-        else if (choice == 9) stockIn();
-        else if (choice == 10) stockOut();
-        else if (choice == 11) createRequest();
-        else if (choice == 12) processRequest();
-        else if (choice == 13) viewRequests();
-        else if (choice == 14) lowStock();
-        else if (choice == 15) generateReport();
-        else if (choice == 16) saveAll();
-        else if (choice == 17) { saveAll(); cout << "  Goodbye!" << endl; }
-        else if (choice == 18) showHashTable();
-        else cout << "  Invalid choice. Enter 1 to 18." << endl;
+        switch (choice) {
+            case 1:  addNewMedicine();            break;
+            case 2:  viewAllMedicines();          break;
+            case 3:  searchMedicine();            break;
+            case 4:  updateMedicine();            break;
+            case 5:  deleteMedicine();            break;
+            case 6:  manageExpiry();              break;
+            case 7:  viewExpired();               break;
+            case 8:  viewExpiringSoon();          break;
+            case 9:  stockIn();                   break;
+            case 10: stockOut();                  break;
+            case 11: createRequest();             break;
+            case 12: processRequest();            break;
+            case 13: viewRequests();              break;
+            case 14: lowStock();                  break;
+            case 15: generateReport();            break;
+            case 16: saveAll();                   break;
+            case 17:
+                saveAll();
+                cout << "\n  [GOODBYE] Data safely persisted. Exiting system.\n\n";
+                break;
+            case 18: showHashTableDemo();         break;
+            case 19: showDataStructureInspector();break;
+            default:
+                cout << "  [!] Invalid selection. Please enter a number from 1 to 19.\n";
+                break;
+        }
 
-        if (choice != 17) pause();
+        if (choice != 17) {
+            pauseScreen();
+        }
     }
+
     return 0;
 }

@@ -1,41 +1,59 @@
-// InventoryList.cpp - MEMBER 4
+// ============================================================================
+// modules/InventoryList.cpp
+// ============================================================================
+// Implementation of the Singly Linked List for Inventory Management
+// ============================================================================
+
 #include "InventoryList.h"
+#include <iostream>
 #include <iomanip>
 
+using namespace std;
+
+// Constructor: Initializes an empty linked list
 InventoryList::InventoryList() {
     head = nullptr;
     total = 0;
 }
 
-// Free every node when program ends
+// Destructor: Walks through every node, deallocating heap memory
+// Prevents memory leaks when the program terminates
 InventoryList::~InventoryList() {
     Node* current = head;
     while (current != nullptr) {
-        Node* nextNode = current->next;
-        delete current;
-        current = nextNode;
+        Node* nextNode = current->next; // Save pointer to next node
+        delete current;                 // Free current node from heap
+        current = nextNode;             // Advance to saved next node
     }
+    head = nullptr;
+    total = 0;
 }
 
-// Add a new medicine at the END of the list
+// Appends a new node at the END (tail) of the list
+// Preserves the natural order of insertion from the storage file
 void InventoryList::addMedicine(const Medicine& m) {
-    Node* newNode = new Node;       // dynamic memory allocation
+    Node* newNode = new Node;
     newNode->data = m;
-    newNode->next = nullptr;
+    newNode->next = nullptr; // New node is the new tail
 
     if (head == nullptr) {
-        head = newNode;             // list was empty
+        // List was previously empty: new node becomes the head
+        head = newNode;
     } else {
+        // Traverse to find the current last node
         Node* current = head;
         while (current->next != nullptr) {
-            current = current->next;   // walk to the last node
+            current = current->next;
         }
-        current->next = newNode;
+        current->next = newNode; // Link old tail to new node
     }
     total++;
 }
 
-// Delete a medicine by ID
+// Deletes a node by Medicine ID
+// Handles two cases:
+// 1. Target is at the head (head pointer moves to head->next)
+// 2. Target is in the middle or tail (previous->next skips over current)
 bool InventoryList::deleteMedicine(const string& id) {
     Node* current = head;
     Node* previous = nullptr;
@@ -43,105 +61,156 @@ bool InventoryList::deleteMedicine(const string& id) {
     while (current != nullptr) {
         if (current->data.medicineID == id) {
             if (previous == nullptr) {
-                head = current->next;           // deleting the first node
+                // Case 1: Deleting the very first node (head)
+                head = current->next;
             } else {
-                previous->next = current->next; // skip over this node
+                // Case 2: Deleting middle or tail node
+                previous->next = current->next; // Re-route around target
             }
-            delete current;
+            delete current; // Free heap memory of the unlinked node
             total--;
             return true;
         }
-        previous = current;
-        current = current->next;
+        previous = current;      // Advance previous pointer
+        current = current->next; // Advance current pointer
     }
-    return false;   // ID not found
+    return false; // Target ID not found
 }
 
-// Find a medicine and return a pointer to its data (nullptr if not found)
+// Finds medicine and returns a POINTER directly to its record
+// This pointer is passed to the Hash Table for O(1) direct updates
 Medicine* InventoryList::findMedicine(const string& id) {
     Node* current = head;
     while (current != nullptr) {
         if (current->data.medicineID == id) {
-            return &(current->data);
+            return &(current->data); // Return address of the medicine in node
         }
         current = current->next;
     }
-    return nullptr;
+    return nullptr; // Not found
 }
 
-// Overwrite an existing record (no duplicate is created)
+// Overwrite existing data fields without re-allocating nodes
 bool InventoryList::updateMedicine(const string& id, const Medicine& newData) {
     Medicine* m = findMedicine(id);
     if (m == nullptr) return false;
-    *m = newData;
+    *m = newData; // Copy new fields over
     return true;
 }
 
+// Stock-In: Increase existing inventory quantity
 bool InventoryList::stockIn(const string& id, int qty) {
+    if (qty <= 0) return false;
     Medicine* m = findMedicine(id);
     if (m == nullptr) return false;
-    m->quantity = m->quantity + qty;
+    m->quantity += qty;
     return true;
 }
 
+// Stock-Out: Decrease inventory quantity (validates available stock)
 bool InventoryList::stockOut(const string& id, int qty) {
+    if (qty <= 0) return false;
     Medicine* m = findMedicine(id);
     if (m == nullptr) return false;
-    if (qty > m->quantity) return false;   // not enough stock
-    m->quantity = m->quantity - qty;
+    if (qty > m->quantity) return false; // Stock underflow check
+    m->quantity -= qty;
     return true;
 }
 
-// Print the whole list as a table
+// Displays inventory in a clean table
 void InventoryList::displayInventory() {
     if (head == nullptr) {
-        cout << "  Inventory is empty." << endl;
+        cout << "  [!] Inventory is empty. No records to display.\n";
         return;
     }
-    cout << left << setw(9) << "ID" << setw(18) << "Name" << setw(10) << "Category"
-         << setw(8) << "Qty" << setw(9) << "Price" << setw(12) << "Expiry" << endl;
-    cout << "------------------------------------------------------------" << endl;
+
+    cout << "  +---------+-------------------+-------------+--------+----------+------------+-------+\n";
+    cout << "  | ID      | Name              | Category    | Qty    | Price    | Expiry     | MinSt |\n";
+    cout << "  +---------+-------------------+-------------+--------+----------+------------+-------+\n";
 
     Node* current = head;
     while (current != nullptr) {
-        cout << left << setw(9) << current->data.medicineID
-             << setw(18) << current->data.name
-             << setw(10) << current->data.category
-             << setw(8) << current->data.quantity
-             << setw(9) << current->data.price
-             << setw(12) << current->data.expiryDate << endl;
+        printMedicineRow(current->data);
         current = current->next;
     }
-    cout << "------------------------------------------------------------" << endl;
-    cout << "  Total medicines: " << total << endl;
+
+    cout << "  +---------+-------------------+-------------+--------+----------+------------+-------+\n";
+    cout << "  Total distinct medicines: " << total << "\n";
 }
 
-// Medicines whose quantity is at or below minimum stock level
+// Displays only medicines where current quantity <= minStockLevel
 void InventoryList::displayLowStock() {
-    int found = 0;
+    int count = 0;
+    cout << "  +-------------------------------------------------------------------------+\n";
+    cout << "  |                       LOW STOCK ALERTS REPORT                           |\n";
+    cout << "  +---------+-------------------+-------------+--------+----------+---------+\n";
+    cout << "  | ID      | Name              | Category    | Qty    | MinStk   | Status  |\n";
+    cout << "  +---------+-------------------+-------------+--------+----------+---------+\n";
+
     Node* current = head;
     while (current != nullptr) {
         if (current->data.quantity <= current->data.minStockLevel) {
-            cout << "  " << current->data.medicineID << " - " << current->data.name
-                 << " | Qty: " << current->data.quantity
-                 << " | Minimum: " << current->data.minStockLevel << endl;
-            found++;
+            cout << "  | " << left << setw(8) << current->data.medicineID
+                 << "| " << left << setw(18) << (current->data.name.length() > 17 ? current->data.name.substr(0, 14) + "..." : current->data.name)
+                 << "| " << left << setw(12) << current->data.category
+                 << "| " << right << setw(6) << current->data.quantity
+                 << " | " << right << setw(8) << current->data.minStockLevel
+                 << " | " << left << setw(8) << (current->data.quantity == 0 ? "CRITICAL" : "LOW") << "|\n";
+            count++;
         }
         current = current->next;
     }
-    if (found == 0) cout << "  No low stock medicines." << endl;
+
+    cout << "  +---------+-------------------+-------------+--------+----------+---------+\n";
+    if (count == 0) {
+        cout << "  [OK] All medicines are above minimum safe stock thresholds.\n";
+    } else {
+        cout << "  [!] Action Required: " << count << " medicine(s) need replenishment.\n";
+    }
 }
 
-int InventoryList::countMedicines() { return total; }
+// Visual diagram showing how the nodes point to each other in memory
+void InventoryList::displayVisualList() {
+    cout << "\n  [ LINKED LIST MEMORY & POINTER VISUALIZATION ]\n";
+    cout << "  Head -> ";
+    if (head == nullptr) {
+        cout << "[ NULL ]\n";
+        return;
+    }
 
-int InventoryList::totalQuantity() {
+    Node* current = head;
+    int col = 10;
+    while (current != nullptr) {
+        cout << "[" << current->data.medicineID << " | " << current->data.quantity << " units]";
+        if (current->next != nullptr) {
+            cout << " -> ";
+            col += 20;
+            if (col > 70) {
+                cout << "\n          -> ";
+                col = 13;
+            }
+        } else {
+            cout << " -> [ NULL / nullptr ]\n";
+        }
+        current = current->next;
+    }
+    cout << "  (Total Nodes: " << total << " linked dynamically on the heap)\n";
+}
+
+int InventoryList::countMedicines() const {
+    return total;
+}
+
+int InventoryList::totalQuantity() const {
     int sum = 0;
     Node* current = head;
     while (current != nullptr) {
-        sum = sum + current->data.quantity;
+        sum += current->data.quantity;
         current = current->next;
     }
     return sum;
 }
 
-Node* InventoryList::getHead() { return head; }
+Node* InventoryList::getHead() const {
+    return head;
+}

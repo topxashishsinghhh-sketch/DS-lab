@@ -1,0 +1,12 @@
+# Compiled Binaries
+*.exe
+*.o
+*.obj
+*.out
+
+# Editor / IDE artifacts
+.vscode/
+.idea/
+
+# Reports generated at runtime
+storage/inventory_report.txt
